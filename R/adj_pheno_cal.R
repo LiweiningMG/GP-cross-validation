@@ -22,7 +22,7 @@ opt <- getopt(spec = spec)
 
 ## 检查参数
 if (!is.null(opt$help) || is.null(opt$phe) || is.null(opt$DIR)) {
-    cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
+    cat(paste(getopt(spec = spec, usage = TRUERUE), "\n"))
 }
 
 ## 检查需要的文件是否存在

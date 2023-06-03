@@ -1,15 +1,24 @@
 #!/usr/bin/bash
 
+########################################################################################################################
+## 版本: 1.0.0
+## 作者: 李伟宁 liwn@cau.edu.cn
+## 日期: 2023-05-30
+## 
 ## 对提供的任意多个群体进行PCA分析并作图
-## 需要用到的软件：R、Plink1.9
-## 需要提供的信息，各个群体的plink文件前缀（plink文件需转为fam、bim、bed的二进制格式）
-## 存在不在当前工作路径的文件时，提供全路径，但不用带后缀(.fam)，如/home/user/pop1
+## 
+## 使用: pca_multi_pop.sh --help
+##
+## 依赖软件/环境: 
+##  1. R
+##  2. plink/1.9
+##  3. 其他R语言和Bash脚本
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
 
-## 用法：./pca_multi_pop.sh -P "prefix1 prefix2 ..." -N "N1 N2 ..."
-# -P 需要作图的群体的plink文件路径（需为二进制文件，且路径中文件名不用加.fam .bim .bed等后缀）
-# -N 每个群体在PCA作图中的群体标识符 (两个参数均需加双引号)
-# -O 输出文件名
-# -h 帮助
 
 ###################  参数处理  #####################
 ####################################################
@@ -164,9 +173,9 @@ rm iid_fid_pca.*
 
 ## debug
 # cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/ChipSim/Lin2022
-pre_list="/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Lee2019/Lee2019q"
-pre_list="STHqm SNTqm QBqm"
+# pre_list="/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Lee2019/Lee2019q"
+# pre_list="STHqm SNTqm QBqm"
 # Name_list="A B C D"
 # out="breedA_breedB_pca.txt"
-fid=true
-plot=true
+# fid=true
+# plot=true

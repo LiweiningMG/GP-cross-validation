@@ -24,7 +24,7 @@ opt <- getopt::getopt(spec = spec)
 ## check parameters
 if (!is.null(opt$help) || is.null(opt$dataf)) {
   ## print help message
-  cat(paste(getopt::getopt(spec = spec, usage = TRUE), "\n"))
+  cat(paste(getopt::getopt(spec = spec, usage = TRUERUE), "\n"))
   quit()
 }
 

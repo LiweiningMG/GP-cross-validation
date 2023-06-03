@@ -40,7 +40,7 @@ opt <- getopt(spec = spec)
 ## 检查参数
 if (!is.null(opt$help) || (is.null(opt$phe_all) && is.null(opt$tbvf)) ||
   (is.null(opt$dir_val) && is.null(opt$ebvf))) {
-  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUERUE), "\n"))
   quit()
 }
 

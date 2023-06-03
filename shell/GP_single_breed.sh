@@ -9,11 +9,12 @@
 ##
 ## 使用: ./single_breed.sh --label "breedA" --phef /path/to/your/phenotype ...(详细参数请通过--help查看)
 ## 依赖软件/环境: 
-##  1. R/4.1.0
+##  1. R
 ##  2. plink/1.9
 ##  3. gmatrix
 ##  4. mbBayesAS
 ##  5. 其他R语言和Bash脚本
+##
 ## License:
 ##  This script is licensed under the GPL-3.0 License.
 ##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.

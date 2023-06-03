@@ -38,7 +38,7 @@ opt <- getopt(spec = spec)
 
 ## 检查参数
 if (!is.null(opt$help) || is.null(opt$files)) {
-  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUERUE), "\n"))
   quit()
 }
 
@@ -140,7 +140,7 @@ for (i in 4:(ncol(data) - 1)) {
 
     ## 报告总体相关
     corij <- cor(cor_data$R2_1, cor_data$R2_2)
-    mean_cor[i - 3, j - 3] = corij
+    mean_cor[i - 3, j - 3] <- corij
     # cat("LD correlation of", colsi[2], "and", colsi[3], "is:", corij, "\n")
 
     ## 统计R2均值，不同群体间相关系数

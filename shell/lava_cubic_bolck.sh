@@ -1,6 +1,25 @@
 #!/usr/bin/bash
-## 使用ldblock()将基因组根据ld信息划分成近似独立的ld块
-## ldblock: https://github.com/cadeleeuw/lava-partitioning
+
+########################################################################################################################
+## 版本: 1.0.0
+## 作者: 李伟宁 liwn@cau.edu.cn
+## 日期: 2023-06-02
+## 
+## 简介: 使用ldblock将基因组根据ld信息划分成近似独立的ld块
+## 软件链接：https://github.com/cadeleeuw/lava-partitioning
+##
+## 使用: lava_cubic_bolck.sh --help
+##
+## 依赖软件/环境: 
+##  1. ldblock
+##  2. plink/1.9
+##  3. 其他R语言和Bash脚本
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
 
 ###################  参数处理  #####################
 ####################################################

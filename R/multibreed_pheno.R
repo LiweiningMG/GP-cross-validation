@@ -25,7 +25,7 @@ opt <- getopt::getopt(spec = spec)
 ## 参数检查
 if (!is.null(opt$help) || is.null(opt$phef) || is.null(opt$pops)) {
   ## print help message
-  cat(paste(getopt::getopt(spec = spec, usage = TRUE), "\n"))
+  cat(paste(getopt::getopt(spec = spec, usage = TRUERUE), "\n"))
   quit(status = -1)
 }
 

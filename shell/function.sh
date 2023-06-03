@@ -6,7 +6,7 @@
 ## 日期: 2023-05-17
 ## 简介: 用于保存自定义的函数
 ## 
-## 使用: ./func.sh
+## 使用: ./function.sh
 ## 
 ## License:
 ##  This script is licensed under the GPL-3.0 License.

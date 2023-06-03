@@ -30,8 +30,8 @@ opt <- getopt(spec = spec)
 # opt$out="YY_LL_ld_0.1_merge_100.txt"
 
 ## 检查参数
-if(!is.null(opt$help) || (is.null(opt$prefixs) && (is.null(opt$map) && opt$bin_merge == "fix"))){
-  cat(paste(getopt(spec = spec, usage = T), "\n"))
+if (!is.null(opt$help) || (is.null(opt$prefixs) && (is.null(opt$map) && opt$bin_merge == "fix"))) {
+  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
@@ -57,11 +57,11 @@ if (is.null(opt$out)) opt$out  <- paste(c(opt$prefixs, "merge_bins.txt"), collap
 
 ## 如果win=1，即输出一个区间，包含所有的标记
 if (opt$win == 1) {
-  binCor <- data.frame(chr=NA, bins=1, nsnp=snp_total, pos_start=NA, pos_end=NA, data_cor=NA)
-  write.table(binCor, opt$out, col.names = FALSE, row.names = FALSE)
-  binCor <- data.frame(nsnp=snp_total)
-  
-  write.table(binCor, opt$out, col.names = FALSE, row.names = FALSE)
+  bin_cor <- data.frame(chr = NA, bins = 1, nsnp = snp_total, pos_start = NA, pos_end = NA, data_cor = NA)
+  write.table(bin_cor, opt$out, col.names = FALSE, row.names = FALSE)
+  bin_cor <- data.frame(nsnp = snp_total)
+
+  write.table(bin_cor, opt$out, col.names = FALSE, row.names = FALSE)
   cat("file with only one region has been outputed.\n")
   quit()
 }
@@ -72,7 +72,7 @@ chrs <- unique(map$CHR)
 ## 输出固定snp数的区间
 if (opt$bin_merge == "fix") {
   nsnp_bin <- NULL
-  for (i in 1:length(chrs)){
+  for (i in seq_along(chrs)){
     nsnp_i <- sum(map$CHR == chrs[i])
     win_num <- floor(nsnp_i / opt$win)
     if (win_num < 1) win_num <- 1
@@ -170,54 +170,54 @@ rm(data1, data2)
 cat("The overall correlation is:", cors, "\n")
 
 ## 合并临近区间并重新计算相关的函数
-bins_merge <- function(stat_df, stat_bin, data_df, data_bin, seg = NULL){
-  # stat_df=binCor; stat_bin="bin_A"; data_df=data12_stat; data_bin="bin_A"; seg=opt$seg
-  
+bins_merge <- function(stat_df, stat_bin, data_df, data_bin, seg = NULL) {
+  # stat_df=bin_cor; stat_bin="bin_A"; data_df=data12_stat; data_bin="bin_A"; seg=opt$seg
+
   ## 如果seg为NULL，则设为窗口相关的1倍标准差
   if (is.null(seg)) seg <- sd(stat_df$cor)
-  
-  i=1
-  stat_df[["bin_temp"]] = NA
-  stat_df[["nsnp_new"]] = NA
-  while (i <= nrow(stat_df)){
-    s = i
-    e = i
-    hit = FALSE
-    while(!hit & i <= nrow(stat_df)){
-      if (i < nrow(stat_df)){
-        diff_cor <- abs(stat_df$cor[i] - stat_df$cor[i+1]) >= seg
-        diff_chr <- stat_df$CHR[i] != stat_df$CHR[i+1]
+
+  i <- 1
+  stat_df[["bin_temp"]] <- NA
+  stat_df[["nsnp_new"]] <- NA
+  while (i <= nrow(stat_df)) {
+    s <- i
+    e <- i
+    hit <- FALSE
+    while (!hit && i <= nrow(stat_df)) {
+      if (i < nrow(stat_df)) {
+        diff_cor <- abs(stat_df$cor[i] - stat_df$cor[i + 1]) >= seg
+        diff_chr <- stat_df$CHR[i] != stat_df$CHR[i + 1]
       } else {
         diff_cor <- TRUE
         diff_chr <- TRUE
       }
-      
-      if(diff_cor | diff_chr){
-        e = i
-        hit = TRUE
+
+      if (diff_cor || diff_chr) {
+        e <- i
+        hit <- TRUE
       }
-      i = i + 1
+      i <- i + 1
     }
     stat_df$bin_temp[s:e] <- stat_df[[stat_bin]][s]
     stat_df$nsnp_new[s:e] <- sum(stat_df$nsnp[s:e])
   }
-  
+
   ## 重新计算cor
   names(stat_df)[which(names(stat_df) == stat_bin)] <- data_bin
   bin_new <- stat_df[, c(data_bin, "bin_temp", "nsnp_new")]
   data_df <- left_join(data_df, bin_new, by = data_bin)
-  stat_df <- dplyr::group_by(data_df, CHR, bin_temp) %>% 
-	  dplyr::summarise(nsnp=mean(nsnp_new), start=min(BP_A, BP_B), end=max(BP_A, BP_B), cor=cor(R2_1, R2_2))
-  
+  stat_df <- dplyr::group_by(data_df, CHR, bin_temp) %>%
+    dplyr::summarise(nsnp = mean(nsnp_new), start = min(BP_A, BP_B), end = max(BP_A, BP_B), cor = cor(R2_1, R2_2))
+
   ## 标准差为0的设为相关设为临近标记相关
   sd0 <- which(is.na(stat_df$cor))
   stat_df$cor[sd0] <- stat_df$cor[sd0 - 1]
-  
+
   names(stat_df)[2] <- data_bin
-  
+
   ## 将区间标记改为连续整数
   stat_df[[data_bin]] <- as.numeric(as.factor(stat_df[[data_bin]]))
-  
+
   return(stat_df)
 }
 
@@ -225,8 +225,8 @@ bins_merge <- function(stat_df, stat_bin, data_df, data_bin, seg = NULL){
 cat("Preliminary division based on ", opt$win, " SNPs in each bins...\n")
 map$bin <- NA
 map$nsnp <- NA
-bin_start = 1
-for (i in 1:length(chrs)){
+bin_start <- 1
+for (i in seq_along(chrs)){
   ## 第i染色体的SNP数
   nsnp_i <- sum(map$CHR == chrs[i])
   ## 以opt$win为一组可以划分的区间数
@@ -249,7 +249,7 @@ cat("Number of bins before merging: ", max(map$bin), "\n")
 
 ## 为ld结果文件中标记对匹配bin区间
 bins <- map[, c("CHR", "SNP", "POS", "bin", "nsnp")]
-names(bins)[c(3,4)] <- c("BP_A", "bin_A")
+names(bins)[c(3, 4)] <- c("BP_A", "bin_A")
 if (opt$bin_merge == "ld") {
   data12_bin <- inner_join(data12, bins, by = c("CHR", "BP_A"))
   bins <- bins[, -ncol(bins)]
@@ -262,25 +262,23 @@ if (opt$bin_merge == "ld") {
 }
 
 ## 统计区间内的LD一致性
-binCor <- dplyr::group_by(data12_stat, CHR, bin_A) %>% 
-	  dplyr::summarise(nsnp=mean(nsnp), start=min(BP_A, BP_B), end=max(BP_A, BP_B), cor=cor(R2_1, R2_2))
+bin_cor <- dplyr::group_by(data12_stat, CHR, bin_A) %>%
+  dplyr::summarise(nsnp = mean(nsnp), start = min(BP_A, BP_B), end = max(BP_A, BP_B), cor = cor(R2_1, R2_2))
 
 ## 标准差为0的设为相关设为临近标记相关
-if (any((is.na(binCor$cor)))) {
-  sd0 <- which(is.na(binCor$cor))
+if (any((is.na(bin_cor$cor)))) {
+  sd0 <- which(is.na(bin_cor$cor))
   for (i in sd0) {
-    if (i > max(binCor$bin_A) %/% 2) {
-        end <- max(binCor$bin_A)
+    if (i > max(bin_cor$bin_A) %/% 2) {
+        end <- max(bin_cor$bin_A)
     } else {
         end <- 1
     }
 
-    for (j in i:end) 
-    {
-       if (!is.na(binCor$cor[j]))
-       {
-            binCor$cor[sd0] <- binCor$cor[j]
-            break
+    for (j in i:end) {
+      if (!is.na(bin_cor$cor[j])) {
+        bin_cor$cor[sd0] <- bin_cor$cor[j]
+        break
        }
     }
   }
@@ -288,37 +286,37 @@ if (any((is.na(binCor$cor)))) {
 
 cat("Merging adjacent windows base on threshold: ", opt$seg, "...\n")
 ## 根据一定阈值合并邻近窗口
-binCor <- bins_merge(binCor, "bin_A", data12_stat, "bin_A", opt$seg)
+bin_cor <- bins_merge(bin_cor, "bin_A", data12_stat, "bin_A", opt$seg)
 
-## 检查是否所以的染色体都在binCor中
-missChr <- unique(map$CHR[!map$CHR %in% binCor$CHR])
-if (length(missChr) > 0) {
+## 检查是否所以的染色体都在bin_cor中
+miss_chr <- unique(map$CHR[!map$CHR %in% bin_cor$CHR])
+if (length(miss_chr) > 0) {
   ## 增加缺失染色体的标记
-  for (i in missChr) {
-    add <- data.frame(CHR = i, bin_A = max(binCor$bin_A) + 1, nsnp = sum(map$CHR == i),
+  for (i in miss_chr) {
+    add <- data.frame(CHR = i, bin_A = max(bin_cor$bin_A) + 1, nsnp = sum(map$CHR == i),
     start = min(map$POS[map$CHR == i]), end = max(map$POS[map$CHR == i]), cor = NA)
-    binCor <- rbind(binCor, add)
+    bin_cor <- rbind(bin_cor, add)
   }
 } 
 
 ## 检查SNP数目是否与map文件中相同
-if (snp_total != sum(binCor$nsnp)) {
+if (snp_total != sum(bin_cor$nsnp)) {
   cat("Error! The number of snps in bins file is inconsistent with the map file.\n")
-  cat("bins=", sum(binCor$nsnp), "≠", "map=", snp_total, "\n")
+  cat("bins=", sum(bin_cor$nsnp), "≠", "map=", snp_total, "\n")
   quit(status = 1)
 }
 
-write.table(binCor, opt$out, col.names = FALSE, row.names = FALSE)
+write.table(bin_cor, opt$out, col.names = FALSE, row.names = FALSE)
 cat("File contain number of snps in bins has been output to: ", opt$out, "\n")
-cat("Number of bins after merging: ", nrow(binCor), "\n")
+cat("Number of bins after merging: ", nrow(bin_cor), "\n")
 
 
 ## debug
 # setwd("/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Frq/frq_0.2/identical/cor0.25/multi")
 opt <- list()
-opt$prefixs="breedA_ref breedB_ref"
-opt$bin_merge="frq"
-opt$seg=0.1
-opt$win=100
-opt$map="/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Frq/frq_0.2/identical/cor0.25/pA_pB.bim"
-opt$out="frq_0.1_100_full.txt"
+opt$prefixs <- "breedA_ref breedB_ref"
+opt$bin_merge <- "frq"
+opt$seg <- 0.1
+opt$win <- 100
+opt$map <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Frq/frq_0.2/identical/cor0.25/pA_pB.bim"
+opt$out <- "frq_0.1_100_full.txt"

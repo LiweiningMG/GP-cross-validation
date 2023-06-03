@@ -17,13 +17,13 @@ spec <- matrix(
 opt <- getopt::getopt(spec = spec)
 
 ## 检查参数
-if(!is.null(opt$help) || is.null(opt$files)){
-  cat(paste(getopt::getopt(spec = spec, usage = T), "\n"))
+if (!is.null(opt$help) || is.null(opt$files)) {
+  cat(paste(getopt::getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
 # 加载需要的程序包
-cat('Loading required packages... \n\n')
+cat("Loading required packages... \n\n")
 suppressPackageStartupMessages(library("data.table"))
 suppressPackageStartupMessages(library("lattice"))
 suppressPackageStartupMessages(library("coda"))
@@ -39,72 +39,78 @@ if (is.null(opt$thin))  opt$seg <- 10
 ## 文件
 files <- unlist(strsplit(opt$files, " "))
 
-for (i in 1:length(files)) {
+for (i in seq_along(files)) {
   mc_i <- fread(files[i])
-  
+
   ## 定义变量的名称
   if (is.null(opt$names)) {
-    opt$names <- paste0('var', 1:ncol(mc_i))
-  }
-  else {
+    opt$names <- paste0("var", seq_len(ncol(mc_i)))
+  } else {
     opt$names <- unlist(strsplit(opt$names, " "))
     if (length(opt$names) != ncol(mc_i)) {
-      cat('The supplied variable names does not match the number of columns in the file.\n')
+      cat("The supplied variable names does not match the number of columns in the file.\n")
       quit()
     }
   }
-  
+
   ## 命名
   names(mc_i) <- opt$names
-  
+
   ## 转化成mcmc对象
   mc_i <- mcmc(mc_i, start = opt$start, end = opt$end, thin = opt$thin)
-  
+
   ## 合并不同链
-  if (i == 1)
-  {
-    mc_list = mcmc.list(mc_i)
-  }
-  else
-  {
-    mc_list[i] = mcmc.list(mc_i)
+  if (i == 1) {
+    mc_list <- mcmc.list(mc_i)
+  } else {
+    mc_list[i] <- mcmc.list(mc_i)
   }
 }
 
 ## 链数量
-nChain <- length(mc_list)
+num_chain <- length(mc_list)
 
 ## 输出文件名前缀
-if (is.null(opt$out)) opt$out <- paste0('MCMC_', nChain, '_chain')
+if (is.null(opt$out)) opt$out <- paste0("MCMC_", num_chain, "_chain")
 
 ## 折线图 xyplot
-filename = paste0(opt$out, '_xy.png')
-CairoPNG(filename, width=1200, height=900, bg = "white")
+filename <- paste0(opt$out, "_xy.png")
+CairoPNG(filename, width = 1200, height = 900, bg = "white")
 # png(filename, width=1200, height=900, bg = "white")
 xyplot(mc_list,
-       scales = list(tck = c(1, 0), x = list(cex = 2.5), y = list(cex = 1.4)),
-       xlab = list(label="Iteration number", cex = 2.5),
-       lwd = 2,
-       strip = strip.custom(bg="lightgrey",
-                            par.strip.text = list(color="black",
-                                                  cex=2,
-                                                  font=3)),
-       par.settings = list(layout.heights=list(strip=2)))
+  scales = list(tck = c(1, 0), x = list(cex = 2.5), y = list(cex = 1.4)),
+  xlab = list(label = "Iteration number", cex = 2.5),
+  lwd = 2,
+  strip = strip.custom(
+    bg = "lightgrey",
+    par.strip.text = list(
+      color = "black",
+      cex = 2,
+      font = 3
+    )
+  ),
+  par.settings = list(layout.heights = list(strip = 2))
+)
 hide_message <- dev.off()
 
 ## 密度图 densityplot
-filename = paste0(opt$out, '_density.png')
-CairoPNG(filename, width=1200, height=900, bg = "white")
+filename <- paste0(opt$out, "_density.png")
+CairoPNG(filename, width = 1200, height = 900, bg = "white")
 # png(filename, width=1200, height=900, bg = "white")
 densityplot(mc_list,
-            scales = list(tck = c(1, 0), x = list(cex = 2.5), y = list(cex = 1.4)),
-            xlab = list(label="Iteration number", cex = 2.5),
-            lwd = 2,
-            strip = strip.custom(bg="lightgrey",
-                                 par.strip.text = list(color="black",
-                                                       cex=2,
-                                                       font=3)),
-            par.settings = list(layout.heights=list(strip=2)))
+  scales = list(tck = c(1, 0), x = list(cex = 2.5), y = list(cex = 1.4)),
+  xlab = list(label = "Iteration number", cex = 2.5),
+  lwd = 2,
+  strip = strip.custom(
+    bg = "lightgrey",
+    par.strip.text = list(
+      color = "black",
+      cex = 2,
+      font = 3
+    )
+  ),
+  par.settings = list(layout.heights = list(strip = 2))
+)
 hide_message <- dev.off()
 
-cat('MCMC plot finished.\n')
+cat("MCMC plot finished.\n")

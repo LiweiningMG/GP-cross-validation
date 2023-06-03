@@ -42,7 +42,7 @@ opt <- getopt(spec = spec)
 
 ## 检查参数
 if (!is.null(opt$help) || is.null(opt$freqf) || is.null(opt$mapf)) {
-  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUERUE), "\n"))
   quit()
 }
 

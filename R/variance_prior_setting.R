@@ -1,6 +1,5 @@
 #!/apps/local/software/program/R-4.0.2/bin/Rscript
 ## 根据表型方差估计近似遗传和残差方差，用作初始值
-## opt=list(filea='/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/rmodel/AGE/YY/val#val#/rep#rep#/pheno.txt', fileb='/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/rmodel/AGE/LL/val#val#/rep#rep#/pheno.txt', rep=5, fold=5, h2=0.5, h2B=0.5, rg=0.001, re =0.001, type='multi', var='pheno', norec=TRUE, add_rf=1, pcol=6, rg_local='/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/rmodel/AGE/multi/ind_B_100.txt2~', out='/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/rmodel/AGE/multi/val#val#/rep#rep#/multi_ind_prior.txt', overwri=1)
 
 # 加载需要的程序包
 suppressPackageStartupMessages(library("getopt"))
@@ -31,37 +30,37 @@ spec <- matrix(
 opt <- getopt(spec = spec)
 
 if (!is.null(opt$help) || is.null(opt$filea)) {
-  cat(paste(getopt(spec = spec, usage = T), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
 ## 默认参数
-if (is.null(opt$h2)) opt$h2 = 0.5
-if (is.null(opt$h2B)) opt$h2B = opt$h2
-if (is.null(opt$rg)) opt$rg = 0.001
-if (is.null(opt$re)) opt$re = 0.001
-if (is.null(opt$miss)) opt$miss = -99
+if (is.null(opt$h2)) opt$h2 <- 0.5
+if (is.null(opt$h2B)) opt$h2B <- opt$h2
+if (is.null(opt$rg)) opt$rg <- 0.001
+if (is.null(opt$re)) opt$re <- 0.001
+if (is.null(opt$miss)) opt$miss <- -99
 # if (is.null(opt$out)) opt$out = "var_prior.txt"
-if (is.null(opt$type)) opt$type = "union"
-if (is.null(opt$add_rf)) opt$add_rf = 1
-if (is.null(opt$var)) opt$var = "pheno"
+if (is.null(opt$type)) opt$type <- "union"
+if (is.null(opt$add_rf)) opt$add_rf <- 1
+if (is.null(opt$var)) opt$var <- "pheno"
 if (is.null(opt$fileb)) {
-      opt$fileb <- opt$filea
-      cat("warn: fileb not set! set to filea\n")
+  opt$fileb <- opt$filea
+  cat("warn: fileb not set! set to filea\n")
 }
 
-output=FALSE
+output <- FALSE
 for (r in 1:opt$rep) { # nolint
   for (f in 1:opt$fold) {
     ## 更换路径中的占位符
     filea <- gsub("#val#", f, gsub("#rep#", r, opt$filea))
     fileb <- gsub("#val#", f, gsub("#rep#", r, opt$fileb))
     out <- gsub("#val#", f, gsub("#rep#", r, opt$out))
-    
+
     ## 检查文件夹中是否已有表型文件
     if (file.exists(out) && opt$overwri != "true") next
 
-    output=TRUE
+    output <- TRUE
 
     ## 检查文件是否存在
     if (!file.exists(filea) || !file.exists(fileb)) {
@@ -110,30 +109,32 @@ for (r in 1:opt$rep) { # nolint
 
     ## 保证协方差矩阵正定性
     ## 遗传方差
-    varaM <- matrix(c(vara1, cova, cova, vara2), 2, 2)
-    varaM_PD  <- nearPD(varaM, keepDiag = TRUE) # default
-    if (!varaM_PD$converged) {
-      stop('warning! The positive definiteness of genetic covariance matrix cannot be guaranteed.\n')
-    } else if (varaM_PD$iterations > 1) {
-      cat('add a small value to genetic effect covariance matrix\n')
-      cova <- varaM_PD$mat[2, 2]
+    vara <- matrix(c(vara1, cova, cova, vara2), 2, 2)
+    vara_pd <- nearPD(vara, keepDiag = TRUE) # default
+    if (!vara_pd$converged) {
+      stop("warning! The positive definiteness of genetic covariance matrix cannot be guaranteed.\n")
+    } else if (vara_pd$iterations > 1) {
+      cat("add a small value to genetic effect covariance matrix\n")
+      cova <- vara_pd$mat[2, 2]
     }
     ## 残差方差
-    vareM <- Matrix(c(vare1, cova, cova, vare2), 2, 2)
-    vareM_PD  <- nearPD(vareM, keepDiag = TRUE) # default
-    if (!vareM_PD$converged) {
-      stop('warning! The positive definiteness of genetic covariance matrix cannot be guaranteed.\n')
-    } else if (vareM_PD$iterations > 1) {
-      cat('add a small value to genetic effect covariance matrix\n')
-      cova <- vareM_PD$mat[2, 2]
+    vare <- Matrix(c(vare1, cova, cova, vare2), 2, 2)
+    vare_pd <- nearPD(vare, keepDiag = TRUE) # default
+    if (!vare_pd$converged) {
+      stop("warning! The positive definiteness of genetic covariance matrix cannot be guaranteed.\n")
+    } else if (vare_pd$iterations > 1) {
+      cat("add a small value to genetic effect covariance matrix\n")
+      cova <- vare_pd$mat[2, 2]
     }
 
     ## 方差组分形式
     if (opt$type == "union") {
-      prior <- data.frame(group = c(1, 1, 1, 2, 2, 2),
-                          rindx = c(1, 2, 2, 1, 2, 2),
-                          cindx = c(1, 1, 2, 1, 1, 2),
-                          var = c(vara1, cova, vara2, vare1, cove, vare2))
+      prior <- data.frame(
+        group = c(1, 1, 1, 2, 2, 2),
+        rindx = c(1, 2, 2, 1, 2, 2),
+        cindx = c(1, 1, 2, 1, 1, 2),
+        var = c(vara1, cova, vara2, vare1, cove, vare2)
+      )
       ## 约束残差协方差
       if (!is.null(opt$norec)) {
         prior <- prior[-5, ]
@@ -148,40 +149,46 @@ for (r in 1:opt$rep) { # nolint
 
         ## 获取相关系数
         rg_local <- fread(opt$rg_local)
-        names(rg_local)[ncol(rg_local)] <- 'cor'
-        names(rg_local)[3] <- 'nsnp'
+        names(rg_local)[ncol(rg_local)] <- "cor"
+        names(rg_local)[3] <- "nsnp"
         nsnp_total <- sum(rg_local$nsnp)
         ## 计算每个区间的方差组分
-        prior <- data.frame(var1 = vara1 * rg_local$nsnp / nsnp_total,
-                            var2 = vara2 * rg_local$nsnp / nsnp_total)
+        prior <- data.frame(
+          var1 = vara1 * rg_local$nsnp / nsnp_total,
+          var2 = vara2 * rg_local$nsnp / nsnp_total
+        )
         prior$cov1 <- prior$cov2 <- rg_local$cor * sqrt(prior$var1) * sqrt(prior$var2)
-        prior <- prior[, c('var1', 'cov1', 'cov2', 'var2')]
+        prior <- prior[, c("var1", "cov1", "cov2", "var2")]
         ## 加上残差方差组分
         prior[nrow(prior) + 1, ] <- c(vare1, cove, cove, vare2)
         ## 保证矩阵的正定性
-        for (i in 1:nrow(prior)) {
+        for (i in seq_len(nrow(prior))) {
           vari <- matrix(unlist(prior[i, ]), 2, 2)
-          vari_PD  <- nearPD(vari, keepDiag = TRUE) # default
-          if (!vari_PD$converged) {
-            cat('warning! The positive definiteness of bin ', i, ' matrix cannot be guaranteed.\n')
-          } else if (vari_PD$iterations > 1) {
-            cat('The covariance matrix of bin ', i, ' is set to: \n', vari_PD$mat, '\n')
-            prior[i, c("var1", "cov1", "cov2", "var2")] <- as.vector(vari_PD$mat)
+          vari_pd <- nearPD(vari, keepDiag = TRUE) # default
+          if (!vari_pd$converged) {
+            cat("warning! The positive definiteness of bin ", i, " matrix cannot be guaranteed.\n")
+          } else if (vari_pd$iterations > 1) {
+            cat("The covariance matrix of bin ", i, " is set to: \n", vari_pd$mat, "\n")
+            prior[i, c("var1", "cov1", "cov2", "var2")] <- as.vector(vari_pd$mat)
           }
         }
       } else {
-        prior <- data.frame(matrix(c(vara1, cova, cova, vara2,
-                                    vare1, cove, cove, vare2), 2, 4, byrow = TRUE))
+        prior <- data.frame(matrix(c(
+          vara1, cova, cova, vara2,
+          vare1, cove, cove, vare2
+        ), 2, 4, byrow = TRUE))
       }
     } else if (opt$type == "blend") {
       if (opt$var == "predict") {
         prior <- data1
         prior$V4 <- (prior$V4 + data2$V4) / 2
       } else {
-        prior <- data.frame(group = c(1, 2),
-                            rindx = c(1, 1),
-                            cindx = c(1, 1),
-                            var = c(mean(vara1, vara2), mean(vare1, vare2)))
+        prior <- data.frame(
+          group = c(1, 2),
+          rindx = c(1, 1),
+          cindx = c(1, 1),
+          var = c(mean(vara1, vara2), mean(vare1, vare2))
+        )
       }
     } else {
       stop("Unknown type!")

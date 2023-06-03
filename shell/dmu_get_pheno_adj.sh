@@ -7,12 +7,14 @@
 ## 简介: 用于获取校正所有固定效应和非遗传效应的校正表型，用于准确性计算(Christensen et al., 2012)
 ##
 ## 使用: ./dmu_get_pheno_adj.sh --phef "pheno.txt" ...(详细参数请通过--help查看)
+## 
 ## 依赖软件/环境:
 ##  1. R/4.1.0
 ##  2. plink/1.9
 ##  3. gmatrix
 ##  4. mbBayesAS
 ##  5. 其他R语言和Bash脚本
+## 
 ## License:
 ##  This script is licensed under the GPL-3.0 License.
 ##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.

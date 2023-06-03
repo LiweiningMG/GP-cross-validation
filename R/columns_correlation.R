@@ -21,7 +21,7 @@ opt <- getopt(spec = spec)
 
 ## 检查参数
 if (!is.null(opt$help) || is.null(opt$file1)) {
-  cat(paste(getopt(spec = spec, usage = T), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
@@ -76,13 +76,13 @@ if (is.null(opt$file2)) {
     ## 命名匹配列
     bycols1 <- as.numeric(unlist(strsplit(opt$by1c, " ")))
     bycols2 <- as.numeric(unlist(strsplit(opt$by2c, " ")))
-    byN <- paste0("by", cols)
-    names(data1)[opt$bycols1] <- names(data2)[opt$bycols2] <- byN
+    bycol <- paste0("by", cols)
+    names(data1)[opt$bycols1] <- names(data2)[opt$bycols2] <- bycol
 
     ## 命名数据列
     names(data1)[opt$col1] <- names(data2)[opt$col2] <- "R2"
 
-    data12 <- inner_join(data1, data2, by = byN, suffix = c("_1", "_2"))
+    data12 <- inner_join(data1, data2, by = bycol, suffix = c("_1", "_2"))
   }
 
   ## 计算相关

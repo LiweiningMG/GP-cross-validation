@@ -31,7 +31,7 @@ opt <- getopt(spec = spec)
 
 ## 检查参数
 if (!is.null(opt$help) || is.null(opt$ldList)) {
-  cat(paste(getopt(spec = spec, usage = T), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
@@ -51,11 +51,11 @@ if (!is.null(opt$dir)) setwd(opt$dir)
 files <- paste0(prefixs, ".ld")
 
 ## 群体个数
-nP <- length(files)
+npop <- length(files)
 
 ## 读取plink的ld结果
 cat("Reading and merging results...\n")
-for (i in 1:nP) {
+for (i in 1:npop) {
   ## 检查文件是否存在
   if (!file.exists(files[i])) {
     cat("file: ", files[i], "not found.\n")
@@ -151,7 +151,7 @@ while (i < win_num) {
   e <- i
   hit <- FALSE
 
-  while (!hit & i < win_num) {
+  while (!hit && i < win_num) {
     diff <- abs(cor_win$cor[i] - cor_win$cor[i + 1]) >= opt$seg
     if (diff) {
       e <- i

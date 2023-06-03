@@ -31,7 +31,7 @@ opt <- getopt::getopt(spec = spec)
 ## 检查参数
 n_need <- length(c(opt$gt))
 if (!is.null(opt$help) || n_need < 1) {
-  cat(paste(getopt::getopt(spec = spec, usage = TRUE), "\n"))
+  cat(paste(getopt::getopt(spec = spec, usage = TRUERUE), "\n"))
   quit()
 }
 

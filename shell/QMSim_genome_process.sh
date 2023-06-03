@@ -245,6 +245,6 @@ $geno_dist --bfile ${out} --out ${out}.dist.summ
 ## debug
 code=/home/liujf/WORKSPACE/liwn/mbGS/code
 proj=/home/liujf/WORKSPACE/liwn/mbGS/data/Two/rep3
-breeds="A B C"
+breeds=(A B C)
 geno_gen=8-10
 maf=0.01
