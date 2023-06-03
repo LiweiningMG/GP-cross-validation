@@ -1,0 +1,23 @@
+/*******************************
+ **     Global parameters     **
+ *******************************/
+title = "Simulations 4 populations";
+nthread = %nthread%;
+nrep  = %rep%;                    //Number of replicates
+h2    = %h2%;                  //Heritability
+qtlh2 = %qtlh2%;                  //QTL heritability
+phvar = 1.0;                  //Phenotypic variance
+skip_inbreeding;
+
+/*******************************
+ **   Historical population   **
+ *******************************/
+begin_hp;
+   hg_size = 300 [0]         //Size of the historical generations
+			 %bottleneck% [100]
+			 300 [200] 
+			 300 [210]
+			 2400 [211];
+	nmfhg = 50;
+end_hp;
+

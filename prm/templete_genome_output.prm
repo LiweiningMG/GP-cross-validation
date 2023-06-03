@@ -1,0 +1,30 @@
+/*******************************
+ **          Genome           **
+ *******************************/
+begin_genome;
+   begin_chr = %nchr%;
+      chrlen = 100;          	//Chromosome length in cM
+      nmloci = %nmloci%;      //Number of markers --> Markers from QMSim were used to select markers and causal loci for the analysis
+      mpos   = rnd;          	//Marker positions
+      nma    = all 2;        	//Number of marker alleles
+      maf    = rnd;          	//Marker allele frequencies
+      nqloci = %nqloci%;     	//Number of QTL
+      qpos   = rnd;          	//QTL positions
+      nqa    = all 2;     		//Number of QTL alleles
+      qaf    = all 0.3 0.7;     //QTL allele frequencies
+      qae    = rndn;      		//QTL allele effects
+     end_chr;
+   select_seg_loci;
+   mmutr  = 0.00005 /recurrent; //rate of marker mutation in historical population
+   qmutr  = 0.00005 /recurrent; //rate of marker mutation in historical population
+   mean_crossover = 1;  	    //mean number of crossovers per Morgan
+end_genome;
+
+/*******************************
+ **       Output options      **
+ *******************************/
+begin_output;
+	output_folder = "%out_dir%";
+	linkage_map;
+	hp_stat;
+end_output;

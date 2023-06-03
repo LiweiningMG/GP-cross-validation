@@ -1,0 +1,61 @@
+/*******************************
+ **   Populations %pop%      **
+ *******************************/
+
+begin_pop = "%pop%1";
+   begin_founder;
+      male   [n = 100,  pop = "hp", select = %founder_select%];
+      female [n = 500,  pop = "hp", select = %founder_select%];
+   end_founder;
+   ng = 1;					 //Number of generations
+   ls  = 4;                  //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = %md%;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur %accur% /true_av;
+   sd  = %founder_select%;                //Selection design
+   begin_popoutput;
+        stat;
+   end_popoutput;
+end_pop;
+
+begin_pop = "%pop%2";
+   begin_founder;
+      male   [n = 200,  pop = "%pop%1", gen=1, select = %seg_select%];
+      female [n = 1000,  pop = "%pop%1", gen=1, select = %seg_select%];
+   end_founder;
+   ng = %seg_ng%;					 //Number of generations
+   ls  = 10;                 //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = %md%;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur %accur% /true_av;
+   sd  = %seg_select%;                //Selection design
+   begin_popoutput;
+        stat;
+  end_popoutput;
+end_pop;
+
+begin_pop = "%pop%";
+   begin_founder;
+      male   [n = %last_male%,  pop = "%pop%2", gen=%seg_ng%, select = %last_select%];
+      female [n = %last_female%,  pop = "%pop%2", gen=%seg_ng%, select = %last_select%];
+   end_founder;
+   ng = %extentLD%;					 //Number of generations
+   ls  = %last_litter_size%;                 //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = %md%;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur %accur% /true_av;
+   sd  = %last_select%;                //Selection design
+   begin_popoutput;
+		  data;
+      stat;
+		  allele_freq /gen %freq_gen% ;
+		  genotype /gen %geno_gen% ;
+   end_popoutput;
+end_pop;
+
