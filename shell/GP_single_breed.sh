@@ -2,7 +2,7 @@
 
 
 ########################################################################################################################
-## 版本: 1.1.0
+## 版本: 1.1.1
 ## 作者: 李伟宁 liwn@cau.edu.cn
 ## 日期: 2023-07-05
 ## 简介: 用于基于BLUP/Bayes交叉验证准确性计算
@@ -25,7 +25,7 @@
 ####################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o 4hp:b:v:m:o: --long rmNeg,intercept,debug,label:,phef:,bfile:,varf:,pedf:,gmat:,DIR:,rep:,fold:,add_rf:,gen:,year:,iyse:,tbvf:,tbv_col:,phereal:,soft:,binf:,seed:,all_eff:,iter:,burnin:,bin:,thin:,report:,ran_eff:,method:,thread:,miss:,gidf:,add_sol:,invA:,num_int:,code:,alpha:,out:,overWri,valphe,dmu4,dense,help \
+TEMP=$(getopt -o 4hp:b:v:m:o: --long rmNeg,intercept,debug,label:,phef:,bfile:,varf:,pedf:,gmat:,DIR:,rep:,fold:,add_rf:,gen:,year:,iyse:,tbvf:,tbv_col:,phereal:,binf:,seed:,all_eff:,iter:,burnin:,bin:,thin:,report:,ran_eff:,method:,thread:,miss:,gidf:,add_sol:,invA:,num_int:,code:,alpha:,out:,overWri,valphe,dmu4,dense,help \
   -n 'javawrap' -- "$@")
 if [ $? != 0 ]; then
   echo "Terminating..." >&2
@@ -55,7 +55,6 @@ while true; do
       --all_eff) all_eff="$2";    shift 2 ;; ## DIR中$MODEL第3行，前3位数不需要，只需要所有效应所在的列，如"2 3 1"
       --ran_eff) ran_eff="$2";    shift 2 ;; ## DIR中$MODEL第4行，第1位数不需要，只需要所有随机效应所在分组，如"1" [1]
       --method)  method="$2";     shift 2 ;; ## 育种值估计方法，可为PBLUP/GBLUP/ssGBLUP/BayesAS [GBLUP]
-      --soft)    software="$2";   shift 2 ;; ## 育种值估计程序，可为JWAS/C [C]
       --bin )    bin="$2";        shift 2 ;; ## 是否合并临近窗口，fix/frq/ld/ind/cubic [ind]
       --binf )   binf="$2";       shift 2 ;; ## 区间文件
       --seed )   seed="$2";       shift 2 ;; ## MCMC抽样及验证群划分时的随机种子 [40296]
@@ -103,7 +102,6 @@ rep=${rep:=1}                                 ## 重复
 fold=${fold:=1}                               ## 验证分组数
 miss=${miss:=-99}                             ## 缺失表型表示
 method=${method:=GBLUP}                       ## 育种值估计方法
-software=${software:=C}                       ## 育种值估计软件
 out=${out:=accuracy.txt}                      ## 准确性输出文件名
 invA=${invA:=2}                               ## A逆构建方式，默认考虑近交
 [[ ${tbv_col} && ! ${tbvf} ]] && tbvf=${phef} ## 含有真实育种值的文件
@@ -130,8 +128,6 @@ accur_cal=${code}/R/accuracy_bias_calculation.R
 keep_phe_gid=${code}/R/keep_pheno_geno_individuals.R
 job_pool=${code}/shell/parallel_jobs_func.sh
 func=${code}/shell/function.sh
-bayesAS_JWAS=${code}/julia/BayesAS.jl
-# bayesA_JWAS=${code}/julia/BayesA.jl
 
 ## 载入自定义函数
 [[ ! -s ${func} ]] && echo "Error: ${func} not found! " && exit 5
@@ -160,7 +156,7 @@ fi
 check_command plink gmatrix mbBayesAS LD_mean_r2 run_dmu4 run_dmuai
 
 ## 检查需要的脚本文件是否存在且具有执行权限
-check_command $phe_group $accur_cal $keep_phe_gid $job_pool $func $bayesAS_JWAS
+check_command $phe_group $accur_cal $keep_phe_gid $job_pool $func
 
 
 ##################  解析命令行参数  ##############
@@ -431,50 +427,23 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
       ## 固定效应
       fix_eff=${all_eff%" ${ran_eff}"}
 
-      if [[ ${software} ==   "JWAS" ]]; then
-        ## raw格式基因型文件
-        [[ ! -s ${bfile}.raw ]] && \
-          plink --bfile ${bfile} \
-          --chr-set ${nchr} \
-          --recode A --out ${bfile} >${logp}/plink_recodeA.log
-
-        job_pool_run $bayesAS_JWAS \
-          --rawf ${bfile}.raw \
-          --phef ${workdir}/val${f}/rep${r}/pheno.txt \
-          --fix ${fix_eff} \
-          --y ${phe_col} \
-          --binf ${binf} \
-          --iter ${iter} \
-          --burnin ${burnin} \
-          --thin ${thin} \
-          --output_dir ${workdir}/val${f}/rep${r}/${bin} \
-          --npop 1 \
-          --rnd "${ran_eff}" \
-          --seed ${seed} \
-          --logf ${workdir}/val${f}/rep${r}/bayesA_val${f}_rep${r}_${bin}.log \
-          --rm_tmp
-          # --method BayesA \
-      elif [[ ${software} == "C" ]]; then
-        job_pool_run mbBayesAS \
-          --bfile ${bfile} \
-          --phef ${workdir}/val${f}/rep${r}/pheno.txt \
-          --fix "${fix_eff}" \
-          --phe ${phe_col} \
-          --binf ${binf} \
-          --iter ${iter} \
-          --burnin ${burnin} \
-          --thin ${thin} \
-          --outdir ${workdir}/val${f}/rep${r} \
-          --report ${report_sep} \
-          --varOut var_${bin}.txt \
-          --effOut effect_${bin}.txt \
-          --gebvOut EBV_${bin} \
-          --mcmcOut MCMC_process_${bin}.txt \
-          --seed ${seed} \
-          --logf ${bin}_gibs_${SLURM_JOB_ID}.log
-      else
-        echo "soft ${software} not supported! "
-      fi
+      job_pool_run mbBayesAS \
+        --bfile ${bfile} \
+        --phef ${workdir}/val${f}/rep${r}/pheno.txt \
+        --fix "${fix_eff}" \
+        --phe ${phe_col} \
+        --binf ${binf} \
+        --iter ${iter} \
+        --burnin ${burnin} \
+        --thin ${thin} \
+        --outdir ${workdir}/val${f}/rep${r} \
+        --report ${report_sep} \
+        --varOut var_${bin}.txt \
+        --effOut effect_${bin}.txt \
+        --gebvOut EBV_${bin} \
+        --mcmcOut MCMC_process_${bin}.txt \
+        --seed ${seed} \
+        --logf ${bin}_gibs_${SLURM_JOB_ID}.log
     fi
 
     if [[ ${method}  =~ "BLUP" ]]; then
@@ -510,11 +479,7 @@ if [[ ${method} =~ 'BLUP' ]]; then
 else
   ## BayesAS模型
   ebv_col=2
-  if [[ ${software} == 'JWAS' ]]; then
-    option="${option} --ebvf ${workdir}/val#val#/rep#rep#/${bin}/EBV_y1.txt"
-  else
-    option="${option} --ebvf ${workdir}/val#val#/rep#rep#/EBV_${bin}_y1.txt"
-  fi
+  option="${option} --ebvf ${workdir}/val#val#/rep#rep#/EBV_${bin}_y1.txt"
 fi
 ## 计算准确性
 $accur_cal \

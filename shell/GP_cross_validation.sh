@@ -3,7 +3,7 @@
 #SBATCH --output=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation/log/GP_cross_%j.log
 
 ########################################################################################################################
-## 版本: 1.1.0
+## 版本: 1.1.1
 ## 作者: 李伟宁 liwn@cau.edu.cn
 ## 日期: 2023-07-05
 ## 
@@ -25,7 +25,7 @@
 ###################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,soft:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,help \
+TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -63,7 +63,6 @@ while true; do
     --all_eff )  all_eff="$2";  shift 2 ;; ## 固定效应和随机效应所在列，如"2 1" ["2 1"]
     --ran_eff )  ran_eff="$2";  shift 2 ;; ## 随机效应所在列，如"1" [1]
     --binf )     binf="$2";     shift 2 ;; ## 区间划分文件 [NULL]
-    --soft)      software="$2"; shift 2 ;; ## 育种值估计程序，可为JWAS/C [JWAS]
     --rep)       rep="$2";      shift 2 ;; ## 交叉验证重复数 [1]
     --fold)      fold="$2";     shift 2 ;; ## 交叉验证折数 [NULL]
     --gen)       gen="$2";      shift 2 ;; ## 有表型个体中倒数gen个世代个体为验证群 [ALL]
@@ -225,7 +224,6 @@ ntrait=${#trait_array[@]}
 [[ ${dirPre} ]] && dirPre=" --prefix ${dirPre} "
 [[ ${prior} ]] && prior=" --priorVar ${prior} "
 # [[ ${bin} ]] && bin=" --bin ${bin} "
-[[ ${soft} ]] && software=" --software ${software} "
 ## 由品种数确定的默认参数
 nginds=${nginds:=$(printf "%${np}s" | sed "s/ /600 /g" | sed 's/ *$//')}
 last_litters=${last_litters:=$(printf "%${np}s" | sed "s/ /10 /g" | sed 's/ *$//')}
@@ -446,7 +444,6 @@ elif [[ ${type} == "within" ]]; then
         --phereal ${pi} \
         --thread ${thread} \
         --tbvf ${tbvf} \
-        ${software} \
         ${pedf} \
         ${dense} \
         ${debug} \
@@ -503,7 +500,6 @@ elif [[ ${type} == "blend" || ${type} == "union" || ${type} == "multi" ]]; then
       --ref ${ref} \
       --seed ${seed} \
       --bin ${bin} \
-      ${software} \
       ${prior} \
       ${dirPre} \
       ${rg_local} \
@@ -527,8 +523,7 @@ elif [[ ${type} == "accur" ]]; then
     --cor "${rg_sim}" \
     --rep "${rep}" \
     --dist "${rg_dist}" \
-    ${out} \
-    ${software}
+    ${out}
 elif [[ ${type} == "var" ]]; then
   ## 遗传参数统计
   $varComp_summ \

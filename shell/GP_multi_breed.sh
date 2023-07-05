@@ -2,7 +2,7 @@
 
 
 ########################################################################################################################
-## 版本: 1.0.1
+## 版本: 1.1.1
 ## 作者: 李伟宁 liwn@cau.edu.cn
 ## 日期: 2023-07-05
 ## 简介: 用于估计联合评估BLUP/Bayes的预测准确性，需要先完成群体内准确性计算(即不同群体目录下有val*/rep*文件夹)再运行此脚本
@@ -23,7 +23,7 @@
 ###################  参数处理  ###################
 #################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
-TEMP=$(getopt -o h4 --long ref:,rg_local,keep_all,nbin:,binf:,summs:,dirPre:,noCov,all_samps,debug,traceplot,bfileW:,bfileM:,pops:,pedf:,priorVar:,DIR:,vidf:,method:,rg:,re:,type:,GmatM:,gmat:,gidf:,invA:,all_eff:,ran_eff:,tbvf:,tbv_col:,phereal:,add_rf:,fold:,rep:,miss:,bincol:,num_int:,win:,nsnp_win:,r2_merge:,bin:,LD_maxD:,r2:,inter:,fix_snp:,seed:,iter:,burnin:,thin:,report_sep:,code:,thread:,alpha:,out:,nchr:,software:,updatepri:,prefix:,VarA,dmu4,overwri,suffix,dense \
+TEMP=$(getopt -o h4 --long ref:,rg_local,keep_all,nbin:,binf:,summs:,dirPre:,noCov,debug,traceplot,bfileW:,bfileM:,pops:,pedf:,priorVar:,DIR:,vidf:,method:,rg:,re:,type:,GmatM:,gmat:,gidf:,invA:,all_eff:,ran_eff:,tbvf:,tbv_col:,phereal:,add_rf:,fold:,rep:,miss:,bincol:,num_int:,win:,nsnp_win:,r2_merge:,bin:,LD_maxD:,r2:,inter:,fix_snp:,seed:,iter:,burnin:,thin:,report_sep:,code:,thread:,alpha:,out:,nchr:,updatepri:,prefix:,VarA,dmu4,overwri,suffix,dense \
   -n 'javawrap' -- "$@")
 if [ $? != 0 ]; then
   echo "Terminating..." >&2
@@ -82,8 +82,7 @@ while true; do
   --alpha )     alpha="$2";      shift 2 ;; ## ssGBLUP relationship matrix alpha
   --vidf )      vidf="$2";       shift 2 ;; ## 验证群个体id文件名
   --out )       out="$2";        shift 2 ;; ## 输出准确性文件名前缀
-  --soft )      software="$2";   shift 2 ;; ## 育种值估计程序，可为JWAS/C [C]
-  --dirPre )    dirPre="$2";     shift 2 ;; ## JWAS输出文件夹增加的前缀
+  --dirPre )    dirPre="$2";     shift 2 ;; ## ebv输出文件夹增加的前缀
   --updatepri ) updatepri="$2";  shift 2 ;; ## 指定轮次更新prior方差尺度矩阵先验 [0]
   --prefix )    prefix="$2";     shift 2 ;; ## 在union/blend/multi等文件夹前添加指定前缀
   --nchr )      nchr="$2" ;      shift 2 ;; ## 染色体数目 [30]
@@ -92,7 +91,6 @@ while true; do
   --debug )     debug=true;      shift   ;; ## 不跑DMU、gmatrix、bayes等时间长的步骤
   --rg_local )  rg_local=true;   shift   ;; ## 每个基因组分区的协方差不同，为局部ld、frq相关系数
   --noCov )     noCov=true;      shift   ;; ## 性状间的残差效应约束为0
-  --all_samps ) all_samps=true;  shift   ;; ## JWAS输出所有变量的样本
   --keep_all )  keep_all=true;   shift   ;; ## 保留所有Bayes结果文件
   --traceplot ) traceplot=true;  shift   ;; ## MCMC burn-in期后的trace plot
   --overwri )   overwrite=true;  shift   ;; ## 若存在已生成的准备文件(表型、id文件等)，则进行覆写
@@ -129,7 +127,6 @@ fix_frq_ld_bolck=${code}/R/fix_frq_ld_bolck.R
 lava_cubic_bolck=${code}/shell/lava_cubic_bolck.sh
 job_pool=${code}/shell/parallel_jobs_func.sh
 func=${code}/shell/function.sh
-bayesAS_JWAS=${code}/julia/BayesAS.jl
 multiG=${code}/R/multibreed_relationship_matrix.R
 variance_prior=${code}/R/variance_prior_setting.R
 MCMC_polt=${code}/R/MCMC_chain_plot.R
@@ -149,7 +146,7 @@ export PATH=${code}/bin:$PATH
 check_command plink gmatrix mbBayesAS LD_mean_r2 run_dmu4 run_dmuai
 
 ## 检查需要的脚本文件是否存在且具有执行权限
-check_command $pheMerge $accur_cal $fix_frq_ld_bolck $lava_cubic_bolck $job_pool $func $bayesAS_JWAS
+check_command $pheMerge $accur_cal $fix_frq_ld_bolck $lava_cubic_bolck $job_pool $func
 check_command $multiG $variance_prior $MCMC_polt $local_rg
 
 ## 避免执行R脚本时的警告("ignoring environment value of R_HOME")
@@ -196,7 +193,6 @@ alpha=${alpha:=0.05}
 method=${method:=GBLUP}
 maf=${maf:=-0.01}
 vidf=${vidf:=val.id}
-software=${software:=C}
 r2_merge=${r2_merge:=0.1}
 add_rf=${add_rf:=1}
 geno=${geno:=0.2}
@@ -207,7 +203,7 @@ code=${code:=${HOME}/liwn/code}
 ## 参数初始化
 # [[ ${noCov} ]] && noCov=" --constraint "
 [[ ${noCov} ]] && noCov=" --nocov "
-[[ ${all_samps} ]] && all_samps=" --all_samp_out "
+# [[ ${all_samps} ]] && all_samps=" --all_samp_out "
 [[ ${keep_all} ]] && keep_all=" --keep_all "
 if [[ $(echo ${h2} | awk '{print NF}') -gt 1 ]]; then
   h2B=$(echo ${h2} | awk '{print $2}')
@@ -700,76 +696,23 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
       ## 固定效应
       fix_eff=${all_eff%" ${ran_eff}"}
 
-      ## JWAS软件
-      if [[ ${software} == JWAS ]]; then
-        echo "BayesAS is being implemented using JWAS..."
-        ## JWAS软件
-        job_pool_run $bayesAS_JWAS \
-          --npop ${np} \
-          --rawf ${bfileM}.raw \
-          --phef ${vali_path}/pheno.txt \
-          --output_dir ${vali_path}/${dirPre}${bin_prefix} \
-          --iter ${iter} \
-          --burnin ${burnin} \
-          --thin ${thin} \
-          --binf ${binf} \
-          --var_prior ${vali_path}/${type}_${dirPre}${bin}_prior.txt \
-          --fix "${fix_eff}" \
-          --rnd "${ran_eff}" \
-          --update_priors "${updatepri}" \
-          --logf ${vali_path}/${dirPre}${bin_prefix}_gibs_jwas${SLURM_JOB_ID}.log \
-          ${keep_all} \
-          ${noCov} \
-          ${all_samps}
-      fi
-
-      ## 自己开发软件
-      if [[ ${software} == C ]]; then
-        echo "BayesAS is being implemented using software written in C..."
-        ## 自己编写的软件
-        # mbBayesAS \
-        job_pool_run mbBayesAS \
-          --bfile ${bfileM} \
-          --phef ${vali_path}/pheno.txt \
-          --fix "${fix_eff}" \
-          --binf ${binf} \
-          --iter ${iter} \
-          --burnin ${burnin} \
-          --thin ${thin} \
-          --outdir ${vali_path} \
-          --report ${report_sep} \
-          --varOut var_${bin}_${r2_merge}_${nsnp_win}.txt \
-          --effOut effect_${bin}_${r2_merge}_${nsnp_win}.txt \
-          --gebvOut EBV_${bin} \
-          --mcmcOut MCMC_process_${bin}.txt \
-          --seed ${seed} \
-          --logf ${bin}_${r2_merge}_${nsnp_win}_gibs_${SLURM_JOB_ID}.log \
-          ${noCov}
-
-        # ## 杂合度计算
-        # plink --bfile ${bfileM} --chr-set ${nchr} --allow-no-sex --hardy >>${workdir}/plink.log
-        # het=$(sed '1d' plink.hwe | awk '{ total += $7 } END { print total/NR }')
-
-        # ## 参考群、验证群plink raw格式基因型文件
-        # cat ${workdir}/${A}/val${f}/rep${r}/${vidf} >${vidf}
-        # cat ${workdir}/${B}/val${f}/rep${r}/${vidf} >>${vidf}
-
-        # [[ ! -s val.raw ]] || [[ -s val.raw && ${overwrite} ]] &&
-        #   plink --bfile ${bfileM} --chr-set ${nchr} --keep ${vidf} --recode A --out val >>plink.log
-        # [[ ! -s ref.raw ]] || [[ -s ref.raw && ${overwrite} ]] &&
-        #   plink --bfile ${bfileM} --chr-set ${nchr} --remove ${vidf} --make-bed --recode A --out ref >>plink.log
-
-        # ## 保证表型排序与raw文件中相同
-        # $phe_order \
-        #   --fam ref.fam \
-        #   --keep geno \
-        #   --pheno pheno.txt \
-        #   --out pheno.txt
-        # [[ $? -ne 0 ]] && exit 1
-
-        # ## 只要表型列(倒数1、2列)
-        # awk '{print $(NF-1),$NF}' pheno.txt >pheno_multi_C.txt
-      fi
+      job_pool_run mbBayesAS \
+        --bfile ${bfileM} \
+        --phef ${vali_path}/pheno.txt \
+        --fix "${fix_eff}" \
+        --binf ${binf} \
+        --iter ${iter} \
+        --burnin ${burnin} \
+        --thin ${thin} \
+        --outdir ${vali_path} \
+        --report ${report_sep} \
+        --varOut var_${bin}_${r2_merge}_${nsnp_win}.txt \
+        --effOut effect_${bin}_${r2_merge}_${nsnp_win}.txt \
+        --gebvOut EBV_${bin} \
+        --mcmcOut MCMC_process_${bin}.txt \
+        --seed ${seed} \
+        --logf ${bin}_${r2_merge}_${nsnp_win}_gibs_${SLURM_JOB_ID}.log \
+        ${noCov}
     fi
   done
 done
@@ -790,17 +733,11 @@ elif [[ ${tbv_col} ]]; then
   option=" --tbv_col ${tbv_col}"
 fi
 [[ ${tbvf} ]] && option="${option} --tbvf ${tbvf} "
-# [[ ${software} == 'C' ]] && option="${option} --famf ${tpath}/val#val#/rep#rep#/val.fam "
 ## 其他参数
 if [[ ${type} == 'multi' ]]; then
   ## MT-Bayes模型
-  if [[ ${software} == 'JWAS' ]]; then
-    option="${option} --ebvf ${tpath}/val#val#/rep#rep#/${dirPre}${bin_prefix}/EBV_y%i%.txt"
-    ebv_col=2
-  else
-    option="${option} --ebvf ${tpath}/val#val#/rep#rep#/EBV_${bin}_y%i%.txt"
-    ebv_col=2
-  fi
+  option="${option} --ebvf ${tpath}/val#val#/rep#rep#/EBV_${bin}_y%i%.txt"
+  ebv_col=2
 else
   ## MT-GBLUP模型
   option="${option} --add_sol ${add_sol} --dir_val ${tpath}/val#val#/rep#rep#/${DIR}"
@@ -815,8 +752,8 @@ for i in $(seq 0 $((np - 1))); do
   ip1=$((i+1))
   ## 输出文件名
   if [[ ${type} == 'multi' ]]; then
-    outf=${out}_${dirPre}${software}_${bin}_${popN[${i}]}.txt
-    [[ ${bin} == 'lava' ]] && outf=${out}_${ref}_${dirPre}${software}_${bin}_${popN[${i}]}.txt
+    outf=${out}_${dirPre}_${bin}_${popN[${i}]}.txt
+    [[ ${bin} == 'lava' ]] && outf=${out}_${ref}_${dirPre}_${bin}_${popN[${i}]}.txt
   else
     outf=${out}_${popN[${i}]}.txt
   fi

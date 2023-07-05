@@ -2,7 +2,7 @@
 #SBATCH --job-name=accuracy
 
 ########################################################################################################################
-## 版本: 1.1.0
+## 版本: 1.1.1
 ## 作者: 李伟宁 liwn@cau.edu.cn
 ## 日期: 2023-07-05
 ## 
@@ -20,7 +20,7 @@
 ####################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o h --long code:,proj:,breeds:,rep:,dist:,cor:,traits:,bin:,soft:,dirPre:,out:,help \
+TEMP=$(getopt -o h --long code:,proj:,breeds:,rep:,dist:,cor:,traits:,bin:,dirPre:,out:,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -33,9 +33,8 @@ while true; do
     --rep )      rep="$2";      shift 2 ;; ## 第几次重复 [""]
     --dist )     dist="$2";     shift 2 ;; ## 加性遗传相关服从的分布 [""]
     --cor )      cor="$2";      shift 2 ;; ## 加性遗传相关大小 [""]
-    --dirPre )   dirPre="$2";   shift 2 ;; ## JWAS输出文件夹增加的前缀 [""]
+    --dirPre )   dirPre="$2";   shift 2 ;; ## ebv文件夹额外前缀 [""]
     --bin )      bins="$2";     shift 2 ;; ## 多品种评估时区间划分方法，fix/frq/ld/lava/cubic ["fix lava cubic"]
-    --soft)      software="$2"; shift 2 ;; ## 育种值估计程序，可为JWAS/C [C]
     --code )     code="$2";     shift 2 ;; ## 脚本文件所在目录，如/BIGDATA2/cau_jfliu_2/liwn/code [NULL]
     --out )      out="$2";      shift 2 ;; ## 准确性输出文件名 [accuracy_$date.txt]
   -h | --help)    grep ";; ##" $0 | grep -v help && exit 1 ;;
@@ -75,7 +74,6 @@ traits=${traits:="/"}
 rep=${rep:="/"}
 dist=${dist:="/"}
 cor=${cor:="/"}
-software=${software:="C"}
 
 ## 解析参数
 read -ra breeds_array <<<"$breeds"
@@ -166,30 +164,26 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
           done
 
           ## MT-bayesAS
-          for soft in ${software}; do # soft=C;bin=fix;dirPre=""
-            for bin in "${bins_array[@]}"; do
-              # accf=${path}/multi/accur_bayes_${dirPre}${soft}_${bin}_${b}.txt
-              accf=$(find ${path}/mult* -name "accur*${bin}*${b}.txt" 2>/dev/null)
-              [[ ! ${accf} ]] && continue
+          for bin in "${bins_array[@]}"; do
+            accf=$(find ${path}/mult* -name "accur*${bin}*${b}.txt" 2>/dev/null)
+            [[ ! ${accf} ]] && continue
 
-              for f in ${accf}; do # f=${accf[0]}
-                type=$(dirname ${f})
-                type=$(basename ${type})
-                type=${type/multi_/}
-                type="${dirPre}${type}"
-                # type="${dirPre}${soft}_${bin}"
-                if [[ -s ${f} ]]; then
-                  {
-                    awk '{print "'${r}'","'${d}'","'${c}'","'mbBayesAS-${bin}'","'${type}'","'${b}'","'${t}'",$0}' ${f}
-                    [[ -s ${wf} ]] && \
-                      awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
-                    [[ -s ${bf} ]] && \
-                      awk '{print "'${r}'","'${d}'","'${c}'","w-BayesAS","'${type}'","'${b}'","'${t}'", $0}' ${bf}
-                  } >>${out}
-                # else
-                #   echo "${f} not found! "
-                fi
-              done
+            for f in ${accf}; do # f=${accf[0]}
+              type=$(dirname ${f})
+              type=$(basename ${type})
+              type=${type/multi_/}
+              type="${dirPre}${type}"
+              if [[ -s ${f} ]]; then
+                {
+                  awk '{print "'${r}'","'${d}'","'${c}'","'mbBayesAS-${bin}'","'${type}'","'${b}'","'${t}'",$0}' ${f}
+                  [[ -s ${wf} ]] && \
+                    awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
+                  [[ -s ${bf} ]] && \
+                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesAS","'${type}'","'${b}'","'${t}'", $0}' ${bf}
+                } >>${out}
+              # else
+              #   echo "${f} not found! "
+              fi
             done
           done
         done

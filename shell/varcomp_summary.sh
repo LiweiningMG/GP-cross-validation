@@ -2,7 +2,7 @@
 #SBATCH --job-name=accur_GBLUP
 
 ########################################################################################################################
-## 版本: 1.1.0
+## 版本: 1.1.1
 ## 作者: 李伟宁 liwn@cau.edu.cn
 ## 日期: 2023-07-05
 ## 
@@ -20,7 +20,7 @@
 ####################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o h --long code:,proj:,breeds:,rep:,dist:,cor:,traits:,bin:,soft:,dirPre:,out:,help \
+TEMP=$(getopt -o h --long code:,proj:,breeds:,rep:,dist:,cor:,traits:,bin:,dirPre:,out:,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -33,9 +33,8 @@ while true; do
     --rep )      rep="$2";      shift 2 ;; ## 第几次重复 ["/"]
     --dist )     dist="$2";     shift 2 ;; ## 加性遗传相关服从的分布 ["/"]
     --cor )      cor="$2";      shift 2 ;; ## 加性遗传相关大小 ["/"]
-    --dirPre )   dirPre="$2";   shift 2 ;; ## JWAS输出文件夹增加的前缀 [""]
+    --dirPre )   dirPre="$2";   shift 2 ;; ## ebv输出文件夹增加的前缀 [""]
     --bin )      bins="$2";     shift 2 ;; ## 多品种评估时区间划分方法，fix/frq/ld/lava/cubic ["fix lava cubic"]
-    --soft)      software="$2"; shift 2 ;; ## 育种值估计程序，可为JWAS/C [C]
     --code )     code="$2";     shift 2 ;; ## 脚本文件所在目录，如/BIGDATA2/cau_jfliu_2/liwn/code [NULL]
     --out )      out="$2";      shift 2 ;; ## 准确性输出文件名 [accuracy_$date.txt]
   -h | --help)    grep ";; ##" $0 | grep -v help && exit 1 ;;
@@ -64,7 +63,6 @@ traits=${traits:="/"}
 rep=${rep:="/"}
 dist=${dist:="/"}
 cor=${cor:="/"}
-software=${software:="C"}
 
 ## 避免执行R脚本时的警告("ignoring environment value of R_HOME")
 unset R_HOME
