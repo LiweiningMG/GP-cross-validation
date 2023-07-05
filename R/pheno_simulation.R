@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## phenotype simulation  ##
 ## liwn 2021-09-22 ##
 
@@ -156,6 +156,7 @@ if (opt$bin == "win") {
 }
 
 ## 指明每个SNP所属的区间
+cat("number of regions: ", nrow(bin), "\n")
 map$bin <- rep(seq_len(nrow(bin)), times = bin$nsnp)
 
 ### 挑选QTL ###
@@ -411,38 +412,3 @@ if (is.null(opt$overlap) && !is.null(opt$bin)) {
   write.table(bin$nsnp, newbinf, row.names = FALSE, quote = FALSE, col.names = FALSE)
   cat("new bins file output to:", newbinf, "\n")
 }
-
-quit()
-
-## debug
-# setwd('/public/home/liujf/liwn/mbGS/QMSim/Two/rep7/uniform/cor0.4')
-opt <- list()
-opt$h2 <- "0.5 0.3"
-opt$mean <- "1.0 0.5 "
-opt$rg <- "0.4"
-opt$gt <- " /public/home/liujf/liwn/mbGS/QMSim/Two/rep7/A /public/home/liujf/liwn/mbGS/QMSim/Two/rep7/B" # nolint
-opt$bin <- "win"
-opt$fid <- "true"
-opt$win <- 1
-opt$dist_cor <- "uniform"
-opt$seed <- 149994
-opt$out <- "pheno_sim.txt"
-opt$qtlf <- "qtl_info.txt"
-opt$nqtl <- 500
-opt$nsnp_cor <- 1
-opt$nbin_cor <- 50
-
-# setwd('/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/rep1/uniform/cor0.2')
-opt <- list()
-opt$h2 <- "0.3 0.3 0.3 0.3"
-opt$mean <- "0.5 1.0 1.5 2.0"
-opt$rg <- "0.2"
-opt$gt <- " /BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/rep1/Am /BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/rep1/Bm /BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/rep1/Cm /BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/rep1/Dm" # nolint
-# opt$bin <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Three/M_bin.txt"
-opt$fid <- "true"
-opt$bin <- "phe_sim_bin.txt"
-opt$win <- 100
-opt$dist_cor <- "uniform"
-opt$seed <- 166452
-opt$out <- "pheno_sim.txt"
-opt$qtlf <- "qtl_info.txt"

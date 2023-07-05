@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 用于跑完完整数据集和剔除验证群的缩减数据集dmu4后进行准确性计算
 
 # 加载需要的程序包
@@ -272,28 +272,3 @@ if (any(!is.na(accs$cor))) {
   cat("No outcome document in all cases!\n")
 }
 
-## debug
-# setwd("/home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/PFAI/YY")
-opt <- list()
-opt$ebv_col <- 1
-opt$val_idf <- "/home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/PFAI/YY/val#val#/rep#rep#/val.id"
-opt$dir_val <- "/home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/PFAI/YY/val#val#/rep#rep#/within"
-opt$fold <- 5
-opt$rep <- 5
-opt$tbv_col <- 2
-opt$add_sol <- 3
-opt$out <- "/home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/PFAI/YY/accur_GBLUP.txt"
-opt$tbvf <- "/home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/PFAI/phe_adj_PBLUP.txt"
-
-# setwd("/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep2/uniform/cor0.2/multi_A_B")
-opt <- list()
-opt$ebv_col <- 2
-opt$tbv_col <- 5
-opt$val_idf <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep2/uniform/cor0.2/A/val#val#/rep#rep#/val.id"
-opt$fid <- "A"
-# opt$dir_val <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Mao2023/AGE/DD/val#val#/rep#rep#/within"
-opt$fold <- 2
-opt$rep <- 5
-opt$out <- "accur_GBLUP.txt"
-opt$tbvf <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep2/uniform/cor0.2/pheno_sim.txt"
-opt$ebvf <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep2/uniform/cor0.2/multi_A_B/val#val#/rep#rep#/EBV_lava_y1.txt"

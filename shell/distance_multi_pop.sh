@@ -2,9 +2,9 @@
 
 
 ########################################################################################################################
-## 版本: 1.0.0
+## 版本: 1.1.0
 ## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-06-02
+## 日期: 2023-07-05
 ## 
 ## 对提供的任意多个群体进行平均遗传距离计算
 ## 
@@ -32,6 +32,7 @@ eval set -- "$TEMP"
 while true; do
   case "$1" in
     --bfile )   bfile="$2";  shift 2 ;;  ## plink文件前缀，如"/public/home/popA /public/home/popB"
+    --nchr )    nchr="$2" ;  shift 2 ;;  ## 染色体数目 [30]
     --out )     out="$2" ;   shift 2 ;;  ## 输出文件名
     -h | --help )     grep " shift " $0 && exit 1 ;;
     -- ) shift; break ;;
@@ -40,14 +41,15 @@ while true; do
 done
 
 ## 默认参数
-out=${out:=distance}
+out=${out:="distance"}
+nchr=${nchr:="30"}
 
 ## 脚本所在文件夹
 if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
   script_path=$(dirname "$(readlink -f "$0")")
-  code="${script_path%%code*}code"
+  code=$(dirname "$script_path")
 fi
 
 ## 脚本
@@ -59,24 +61,20 @@ func=${code}/shell/function.sh
 source ${func}
 
 ## 检查plink二进制文件是否存在
-check_plink ${bfile}
+check_plink "${bfile}" ${nchr}
 
 ## 工作文件夹
 dir=$(dirname ${bfile})
 cd ${dir} || exit
 
 ## 个体按照FID排序
-plink --bfile ${bfile} --indiv-sort natural --make-bed --out distance_tmp
+plink --bfile ${bfile} --chr-set ${nchr} --indiv-sort natural --make-bed --out distance_tmp
 
 ## 计算距离矩阵
-plink --bfile distance_tmp --distance square0 1-ibs --out distance_tmp
+plink --bfile distance_tmp --chr-set ${nchr} --distance square0 1-ibs --out distance_tmp
 
 ## 计算矩阵中品种配对对应的块的均值
 $dist --prefix distance_tmp --out ${out}
 
 ## 删除中间文件
 rm distance_tmp.*
-
-## debug
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021
-bfile="/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/Genotype.id.qc.fam"

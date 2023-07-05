@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 用于跑完完整数据集和剔除验证群的缩减数据集dmu4后进行准确性计算
 
 # 加载需要的程序包
@@ -162,25 +162,3 @@ if (!is.null(opt$out)) {
     write.table(phe_out, opt$out, row.names = FALSE, col.names = header, quote = FALSE)
     cat("phenotypes of all genotyped individuals (", nrow(phe_out), ") output to: ", opt$out, "\n", sep = "")
 }
-
-##debug
-# setwd('/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/AGE/LL')
-opt <- list()
-opt$phef <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/data/CFJY_grow_LL.txt"
-opt$famf <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/AGE/YY_LL.imputed_LL.fam"
-opt$out <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/data/CFJY_grow_LL.txt_rmMiss"
-opt$rm <- "single"
-opt$phec <- 3
-opt$rmOut <- "gid_miss_phe.txt"
-# opt$mean=2
-# opt$breed=3
-
-
-opt <- list()
-opt$phef <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/AGE/blend/ref_val.id"
-opt$famf <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/AGE/pA_pB.fam"
-opt$rm <- "single"
-opt$phec <- 1
-opt$rmOut <- "gid_miss_phe.txt"
-# opt$mean=2
-# opt$breed=3

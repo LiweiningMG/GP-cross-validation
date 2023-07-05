@@ -1,5 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
-## !/usr/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 # 李伟宁 2021-12-08
 ## 计算多群体关系矩阵 ###
 ## 输入两个群体合并基因型文件(plink的012格式，*.raw) ###

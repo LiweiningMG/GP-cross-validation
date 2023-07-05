@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 根据dmu结果文件和表型文件计算校正表型(校正固定效应和非加性效应)
 
 # 加载需要的程序包
@@ -93,10 +93,3 @@ if (nadj > 0) {
 } else {
     cat("error! no records in results file.\n")
 }
-
-## debug
-# CFJY within
-opt <- list()
-opt$phe <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/AGE/CFJY/CFJY_dmu_pheno.txt_noMiss"
-opt$DIR <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/AGE/CFJY/phe_adj"
-opt$out <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/AGE/CFJY/phe_adj_PBLUP2.txt"

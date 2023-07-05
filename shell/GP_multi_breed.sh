@@ -1,9 +1,10 @@
-#!/bin/bash
+#!/usr/bin/bash
+
 
 ########################################################################################################################
 ## 版本: 1.0.1
 ## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-05-02
+## 日期: 2023-07-05
 ## 简介: 用于估计联合评估BLUP/Bayes的预测准确性，需要先完成群体内准确性计算(即不同群体目录下有val*/rep*文件夹)再运行此脚本
 ##
 ## 使用: ./multi_breed.sh --pops "breedA breedB" --bfileM /path/to/your/plinkFile ...(详细参数请通过--help查看)
@@ -22,7 +23,7 @@
 ###################  参数处理  ###################
 #################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
-TEMP=$(getopt -o h4 --long ref:,rg_local,keep_all,nbin:,binf:,summs:,dirPre:,noCov,all_samps,debug,traceplot,bfileW:,bfileM:,pops:,pedf:,priorVar:,DIR:,vidf:,method:,rg:,re:,type:,GmatM:,gmat:,gidf:,invA:,all_eff:,ran_eff:,tbvf:,tbv_col:,phereal:,add_rf:,fold:,rep:,miss:,bincol:,num_int:,win:,nsnp_win:,r2_merge:,bin:,LD_maxD:,r2:,inter:,fix_snp:,seed:,iter:,burnin:,thin:,report_sep:,code:,thread:,alpha:,out:,software:,updatepri:,prefix:,VarA,dmu4,overwri,suffix,dense \
+TEMP=$(getopt -o h4 --long ref:,rg_local,keep_all,nbin:,binf:,summs:,dirPre:,noCov,all_samps,debug,traceplot,bfileW:,bfileM:,pops:,pedf:,priorVar:,DIR:,vidf:,method:,rg:,re:,type:,GmatM:,gmat:,gidf:,invA:,all_eff:,ran_eff:,tbvf:,tbv_col:,phereal:,add_rf:,fold:,rep:,miss:,bincol:,num_int:,win:,nsnp_win:,r2_merge:,bin:,LD_maxD:,r2:,inter:,fix_snp:,seed:,iter:,burnin:,thin:,report_sep:,code:,thread:,alpha:,out:,nchr:,software:,updatepri:,prefix:,VarA,dmu4,overwri,suffix,dense \
   -n 'javawrap' -- "$@")
 if [ $? != 0 ]; then
   echo "Terminating..." >&2
@@ -45,7 +46,7 @@ while true; do
   --priorRg )   rg="$2";         shift 2 ;; ## 群体A和B的加性相关大小先验(两性状模型) [0.001]
   --priorRe )   re="$2";         shift 2 ;; ## 群体A和B的残差相关大小先验(两性状模型) [0.001]
   --DIR )       DIR="$2";        shift 2 ;; ## 参数卡前缀 [type]
-  --method )    method="$2";     shift 2 ;; ## dmu模型
+  --method )    method="$2";     shift 2 ;; ## dmu评估模型，PBLUP/GBLUP/ssGBLUP
   --type )      type="$2";       shift 2 ;; ## 参考群合并方式 blend/union/multi(两性状模型) [blend]
   --GmatM )     GmatM="$2";      shift 2 ;; ## 基因型矩阵构建方式[multi/single]
   --gmat )      gmat="$2";       shift 2 ;; ## 用户提供关系矩阵或逆矩阵(id id value)
@@ -54,7 +55,7 @@ while true; do
   --all_eff  )  all_eff="$2";    shift 2 ;; ## DIR中$MODEL第3行(所有效应)，前3位不用，如"2 1"，品种间不同时用-分隔
   --ran_eff  )  ran_eff="$2";    shift 2 ;; ## DIR中$MODEL第4行(随机效应分)，第1位不用，如"1"，品种间不同时用-分隔
   --tbvf )      tbvf="$2";       shift 2 ;; ## 包含真实育种值的文件
-  --tbv_col )   tbv_col="$2";    shift 2 ;; ## 真实育种值在育种值文件的第几列
+  --tbv_col )   tbv_col="$2";    shift 2 ;; ## 真实育种值在表型文件的第几列，当真实育种值即为表型文件中相应列表型时参数应为"same"
   --phereal )   phereal="$2";    shift 2 ;; ## 表型在表型文件中实数列的位置
   --add_rf )    add_rf="$2";     shift 2 ;; ## 加性效应所在分组
   --fold )      fold="$2";       shift 2 ;; ## 交叉验证倍数
@@ -85,6 +86,7 @@ while true; do
   --dirPre )    dirPre="$2";     shift 2 ;; ## JWAS输出文件夹增加的前缀
   --updatepri ) updatepri="$2";  shift 2 ;; ## 指定轮次更新prior方差尺度矩阵先验 [0]
   --prefix )    prefix="$2";     shift 2 ;; ## 在union/blend/multi等文件夹前添加指定前缀
+  --nchr )      nchr="$2" ;      shift 2 ;; ## 染色体数目 [30]
   --dense )     dense=true;      shift   ;; ## 将DMU的ANALYSE中的method设为31，利用多线程计算方差组分
   --suffix )    suffix=true;     shift   ;; ## 在union/blend/multi等文件夹后添加品种名称后缀
   --debug )     debug=true;      shift   ;; ## 不跑DMU、gmatrix、bayes等时间长的步骤
@@ -107,12 +109,17 @@ done
 ## 工作目录
 workdir=$(pwd)
 
+## 日志文件夹
+logp=${workdir}/log
+mkdir -p ${logp}
+
 ## 脚本所在文件夹
 if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
   script_path=$(dirname "$(readlink -f "$0")")
-  code="${script_path%%code*}code"
+  code=$(dirname "$script_path")
+  code=$(dirname "$script_path")
 fi
 
 ## 脚本
@@ -240,7 +247,7 @@ IFS=" " read -r -a popN <<<"$pops"
 IFS=" " read -r -a bfileWa <<<"$bfileW"
 
 ## DMU多线程
-if [[ ${method} == "GBLUP" || ${dense} ]]; then
+if [[ ${method} == "GBLUP" && ${dense} ]]; then
   method_dmu="31"
 else
   method_dmu="1"
@@ -296,21 +303,23 @@ all_eff="$((num_int + 1)) ${all_eff}"
 ##########################################
 ## 品种内的基因型文件路径
 # IFS=" " read -r -a bfiles <<<"${bfileM} ${bfileW[*]}"
-if [[ ! ${bfileW} ]]; then
-  IF="\n" mapfile -t bfiles < <(printf "%s\n" "${popN[@]}" | xargs -I {} echo "${workdir}/{}/{}")
-else
-  IFS=" " read -r -a bfiles <<<"${bfileW}"
-fi
-## 检查fam/bim/bed文件是否存在
-check_plink ${nchr} "${bfiles[@]}"
-## 生成各品种合并后的plink文件
-if [[ ${type} != "multi" && ! -s ${gmat} ]] || [[ ${type} == "multi" ]]; then
-  if [[ ${bfileM} ]]; then
-    check_plink ${nchr} ${bfileM}
+if [[ ! ${debug} ]]; then
+  if [[ ! ${bfileW} ]]; then
+    IF="\n" mapfile -t bfiles < <(printf "%s\n" "${popN[@]}" | xargs -I {} echo "${workdir}/{}/{}")
   else
-    ## 合并plink文件
-    bfileM=${tpath}/merge
-    merge_plink "${bfiles[*]}" ${bfileM}
+    IFS=" " read -r -a bfiles <<<"${bfileW}"
+  fi
+  ## 检查fam/bim/bed文件是否存在
+  check_plink "${bfiles[@]}" ${nchr}
+  ## 生成各品种合并后的plink文件
+  if [[ ${type} != "multi" && ! -s ${gmat} ]] || [[ ${type} == "multi" ]]; then
+    if [[ ${bfileM} ]]; then
+      check_plink "${bfileM}" ${nchr}
+    else
+      ## 合并plink文件
+      bfileM=${tpath}/merge
+      merge_plink "${bfiles[*]}" ${bfileM}
+    fi
   fi
 fi
 
@@ -383,11 +392,12 @@ if [[ ${type} == 'multi' ]] && [[ ! -s ${binf} || ${overwrite} ]]; then
       echo "Number of SNPs per window set to: ${nsnp_win}"
     fi
 
-    $fix_frq_ld_bolck \
-      --win ${nsnp_win} \
-      --map ${bfileM}.bim \
-      --bin_merge ${bin} \
-      --out ${binf}
+    [[ ! ${debug} ]] && \
+      $fix_frq_ld_bolck \
+        --win ${nsnp_win} \
+        --map ${bfileM}.bim \
+        --bin_merge ${bin} \
+        --out ${binf}
   elif [[ ${bin} == "frq" || ${bin} == "ld" ]]; then
     # ## 检查是否提供了每个品种的基因型文件 
     # [[ ! "${bfileW[*]}" ]] && echo "Required parameter 'bfileW' is missing! " && exit 1
@@ -405,7 +415,7 @@ if [[ ${type} == 'multi' ]] && [[ ! -s ${binf} || ${overwrite} ]]; then
         --ld-window-kb ${LD_maxD} \
         --ld-window ${inter} \
         --ld-window-r2 ${r2} \
-        --out ${popN[i]} >>${workdir}/plink.log
+        --out ${popN[i]} >>${logp}/plink_ld_frq.log
     done
 
     ## 根据要求定义区间
@@ -435,7 +445,7 @@ if [[ ${type} == 'multi' ]] && [[ ! -s ${binf} || ${overwrite} ]]; then
       --maf ${maf} \
       --type ${bin} \
       --minSize ${nsnp_win} \
-      --out ${binf}~ >${bin}_${ref}_block_${SLURM_JOB_ID}.log
+      --out ${binf}~ >${logp}/${bin}_${ref}_block_${SLURM_JOB_ID}.log
 
     ## 提取出指示每个区间内SNP数的单列文件
     sed '1d' ${binf}~ | awk '{print $5}' >${binf}
@@ -462,7 +472,7 @@ if [[ ${rg_local} && ${bin} == "lava" ]]; then
       --summ2 ${summB}.assoc.txt \
       --bfile ${!bfile_block} \
       --block ${binf}~ \
-      --out ${binf}~ &>${bin}_local_rg_${SLURM_JOB_ID}.log
+      --out ${binf}~ &>${logp}/${bin}_local_rg_${SLURM_JOB_ID}.log
   else
     echo "Error: ${summA}.assoc.txt or ${summB}.assoc.txt ont found! "
     exit 1
@@ -544,7 +554,7 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
       --chr-set ${nchr} \
       --geno 0 \
       --recode A \
-      --out merge >>${workdir}/plink.log
+      --out merge >>${logp}/plink_recodeA.log
 
     ## 多品种关系矩阵（待修改）
     $multiG \
@@ -717,6 +727,7 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
       if [[ ${software} == C ]]; then
         echo "BayesAS is being implemented using software written in C..."
         ## 自己编写的软件
+        # mbBayesAS \
         job_pool_run mbBayesAS \
           --bfile ${bfileM} \
           --phef ${vali_path}/pheno.txt \
@@ -730,7 +741,7 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
           --varOut var_${bin}_${r2_merge}_${nsnp_win}.txt \
           --effOut effect_${bin}_${r2_merge}_${nsnp_win}.txt \
           --gebvOut EBV_${bin} \
-          --mcmcOut MCMC_process.txt_${bin} \
+          --mcmcOut MCMC_process_${bin}.txt \
           --seed ${seed} \
           --logf ${bin}_${r2_merge}_${nsnp_win}_gibs_${SLURM_JOB_ID}.log \
           ${noCov}
@@ -773,7 +784,11 @@ done
 ## 更换工作路径
 cd ${tpath} || exit
 ## 准确性计算参数
-[[ ${tbv_col} ]] && option=" --tbv_col ${tbv_col}"
+if [[ ${tbv_col} == "same" ]]; then
+  option=" --tbv_col $((num_int + phereal))"
+elif [[ ${tbv_col} ]]; then
+  option=" --tbv_col ${tbv_col}"
+fi
 [[ ${tbvf} ]] && option="${option} --tbvf ${tbvf} "
 # [[ ${software} == 'C' ]] && option="${option} --famf ${tpath}/val#val#/rep#rep#/val.fam "
 ## 其他参数
@@ -841,107 +856,3 @@ fi
 ########################################################
 ## 基因型文件
 # [[ ${bfileM} && ${bfileM} =~ rmMiss ]] && rm ${bfileM}.*
-
-# exit 0
-
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Ratio/rep5/rand/identical/cor0.6
-pops="breedA breedB"
-bfileM=/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Ratio/rep5/rand/identical/cor0.6/pA_pB
-tbvf=/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Ratio/rep5/rand/identical/cor0.6/breedA_breedB_pheno.txt
-tbv_col=5
-fold=5
-rep=5
-phereal=5
-type=multi
-# type=blend
-ref=M
-software=C
-bin=lava
-nsnp_win=100
-thread=10
-seed=12152
-out=accur_bayes
-
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Zhuang2019/LMA
-pops="USA CAN"
-bfileM=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Zhuang2019/pA_pBb
-tbvf=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Zhuang2019/LMA/phe_adj_PBLUP.txt
-fold=5
-rep=5
-type=multi
-software=C
-bin=fix
-nsnp_win=100
-thread=25
-seed=4820
-out=accur_bayes
-
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep5/normal/cor0.3
-pops="A B"
-# bfileM=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Lee2019/LIM_AAN
-tbvf=/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep5/normal/cor0.3/pheno_sim.txt
-fold=5
-rep=5
-type=multi
-software=C
-bin=fix
-phereal=4
-nsnp_win=100
-thread=25
-seed=405534
-out=accur_bayes
-suffix=true
-tbv_col=5
-debug=true
-
-# cd /home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/PFAI
-pops="YY LL"
-# bfileM=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/merge
-tbvf=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/PFAI/phe_adj_PBLUP.txt
-fold=5
-rep=5
-type=multi
-software=C
-bin=cubic
-phereal=1
-nsnp_win=100
-thread=25
-ref=2
-prefix=ref2_
-seed=30158
-noCov=true
-out=accur_bayes
-suffix=true
-
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Lee2019/BWT
-pops="AAN LIM"
-# bfileM=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/merge
-tbvf=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Lee2019/BWT/phe_adj_PBLUP.txt
-fold=5
-rep=5
-type=multi
-phereal=1
-software=JWAS
-bin=fix
-nsnp_win=100
-thread=8
-seed=19900
-out=accur_bayes
-suffix=true
-
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/rep5/identical/cor0.1
-pops="A B C D"
-# bfileM=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/merge
-tbvf=/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/rep5/identical/cor0.1/pheno_sim.txt
-fold=2
-rep=5
-type=multi
-phereal=4
-software=C
-bin=frq
-nsnp_win=100
-thread=8
-seed=166452
-out=accur_bayes
-suffix=true
-tbv_col=5

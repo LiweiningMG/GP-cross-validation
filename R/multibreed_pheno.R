@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 将两个群体的dmu表型文件进行合并，以便进行联合评估  ###
 ## debug
 # opt = list(fold=5, pheno='LineA_LineB_pheno.txt', iyse='2', phe='10')
@@ -136,15 +136,3 @@ for (r in 1:opt$rep) { # nolint
     }
   }
 }
-
-## debug
-opt <- list()
-opt$pops <- "A B C D"
-opt$phef <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/rep1/identical/cor0.2/#breed#/val#val#/rep#rep#/pheno.txt"
-opt$rep <- 5
-opt$fold <- 5
-opt$nInt <- 2
-opt$type <- "union"
-opt$pheCol <- 4
-opt$overwri <- ""
-opt$out <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/rep1/identical/cor0.2/union/val#val#/rep#rep#/pheno.txt"

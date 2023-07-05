@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 计算群体间的distance均值
 
 ## 加载需要的程序包
@@ -89,7 +89,3 @@ output_name <- paste0(opt$out, ".csv")
 write.csv(mean, output_name, row.names = TRUE, na = "")
 
 cat("average Genetic distances output to:", output_name, "\n")
-
-## debug
-opt <- list()
-opt$prefix <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/plink"

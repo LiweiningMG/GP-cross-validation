@@ -1,9 +1,9 @@
 #!/usr/bin/bash
 
 ########################################################################################################################
-## 版本: 1.0.0
+## 版本: 1.1.0
 ## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-05-02
+## 日期: 2023-07-05
 ## 简介: 用于获取校正所有固定效应和非遗传效应的校正表型，用于准确性计算(Christensen et al., 2012)
 ##
 ## 使用: ./dmu_get_pheno_adj.sh --phef "pheno.txt" ...(详细参数请通过--help查看)
@@ -24,7 +24,7 @@
 ####################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o 4vh\? --long append,ped_var,dmu4,help,phef:,bfile:,gmat:,gidf:,pedf:,all_eff:,ran_eff:,add_rf:,invA:,varf:,phereal:,miss:,num_int:,code:,DIR:,alpha:,out:,intercept,debug \
+TEMP=$(getopt -o 4vh\? --long append,ped_var,dmu4,help,phef:,bfile:,gmat:,gidf:,pedf:,all_eff:,ran_eff:,add_rf:,invA:,varf:,phereal:,miss:,num_int:,code:,DIR:,alpha:,out:,nchr:,intercept,debug \
     -n 'javawrap' -- "$@")
 if [ $? != 0 ]; then
     echo "Open script $0 to view instructions"
@@ -51,6 +51,7 @@ while true; do
     --miss )     miss="$2";       shift 2 ;;  # 缺失表型表示符
     --num_int )  num_int="$2";    shift 2 ;;  # 整型列列数
     --code )     code="$2";       shift 2 ;;  # 代码路径
+    --nchr )     nchr="$2";       shift 2 ;;  # 使用的物种的染色体数目 [30]
     --DIR )      DIR="$2";        shift 2 ;;  # 参数卡文件前缀
     --alpha )    alpha="$2";      shift 2 ;;  # G阵校正系数(是否考虑近交 )
     --out )      out="$2";        shift 2 ;;  # 输出校正表型文件名
@@ -70,24 +71,25 @@ if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
   script_path=$(dirname "$(readlink -f "$0")")
-  code="${script_path%%code*}code"
+  code=$(dirname "$script_path")
 fi
 
 ## 将程序路径加到环境变量中
 export PATH=${code}/bin:$PATH
 
 ## 参数默认值
-ran_eff=${ran_eff:=1}           ## 默认只有加性遗传一个效应
-all_eff=${all_eff:="2 1"}       ## 默认只有群体均值一个固定效应，且在表型文件第二列(全为1)
-phereal=${phereal:=1}           ## 表型列
-add_rf=${add_rf:=1}             ## 加性随机效应所在组
-miss=${miss:=-99}               ## 缺失表型表示
-invA=${invA:=1}                 ## A逆构建方式(是否考虑近交)
-alpha=${alpha:=0.05}            ## G阵校正系数(是否考虑近交)
-DIR=${DIR:=phe_adj}             ## 参数卡文件前缀
-out=${out:=phe_adj.txt}         ## 输出文件名
-append=${append:=false}         ## 结果附加在已有文件上，而不是覆盖
-varf=${varf:=}                  ## 避免vscode报错
+ran_eff=${ran_eff:="1"}        ## 默认只有加性遗传一个效应
+all_eff=${all_eff:="2 1"}      ## 默认只有群体均值一个固定效应，且在表型文件第二列(全为1)
+phereal=${phereal:="1"}        ## 表型列
+add_rf=${add_rf:="1"}          ## 加性随机效应所在组
+miss=${miss:="-99"}            ## 缺失表型表示
+invA=${invA:="1"}              ## A逆构建方式(是否考虑近交)
+alpha=${alpha:="0.05"}         ## G阵校正系数(是否考虑近交)
+DIR=${DIR:="phe_adj"}          ## 参数卡文件前缀
+out=${out:="phe_adj.txt"}      ## 输出文件名
+nchr=${nchr:="30"}             ## 染色体数目
+append=${append:=false}        ## 结果附加在已有文件上，而不是覆盖
+varf=${varf:=}                 ## 避免vscode报错
 
 ####################
 ## 需要调用的软件
@@ -111,6 +113,10 @@ fi
 
 ## 主文件夹
 workdir=$(pwd)
+
+## 日志文件夹
+logp=${workdir}/log
+mkdir -p ${logp}
 
 ## 脚本
 keep_phe_gid=${code}/R/keep_pheno_geno_individuals.R
@@ -153,8 +159,19 @@ if [[ ${bfile} ]]; then
   if [[ -s ${workdir}/miss_phe.id ]]; then
     n_miss_phe=$(cat ${workdir}/miss_phe.id | wc -l)
     echo "remove ${n_miss_phe} individuals with the missing value in plink files"
-    plink --bfile ${bfile} --chr-set 30 --make-bed --out ${bfile}.org >${workdir}/plink.log
-    plink --bfile ${bfile}.org --chr-set 30 --remove ${workdir}/miss_phe.id --make-bed --out ${bfile} >>${workdir}/plink.log
+
+    ## 重命名备份原始文件
+    plink \
+      --bfile ${bfile} \
+      --chr-set ${nchr} \
+      --make-bed --out ${bfile}.org >${logp}/plink_rename.log
+
+    ## 剔除表型缺失个体
+    plink \
+      --bfile ${bfile}.org \
+      --chr-set ${nchr} \
+      --remove ${workdir}/miss_phe.id \
+      --make-bed --out ${bfile} >>${logp}/plink_rm_miss_phe.log
   fi
 fi
 ## 截距项列设置(整列设为"1")
@@ -268,7 +285,12 @@ fi
 if [[ ! -s ${gmat} && ${bfile} ]]; then
   [[ ${method} == "GBLUP" ]] && inv=" --inv" || inv=""
   echo "Read the plink bed file and Calculate the additive G matrix..."
-  gmatrix --bfile ${bfile} --grm agrm --out full ${inv} >gmatrix.log
+  
+  ## 用gmatrix软件生成G阵
+  gmatrix \
+    --bfile ${bfile} \
+    --grm agrm \
+    --out full ${inv} >${logp}/gmatrix.log
 
   if [[ $? -ne 0 ]]; then
     echo "G matrix calculate error! "
@@ -305,27 +327,3 @@ $phe_adj \
   --add_sol ${add_sol} \
   --out ${out} \
   --append ${append}
-
-## FJYC CFJY
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/ADFI/YY
-phef=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/data/pheno_dmu_YY.txt
-pedf=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/data/pedi_dmu_YY.txt
-# bfile=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/AGE/pA_pB_imputed_qc_CFJY
-# all_eff="2 1"
-out=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/ADFI/phe_adj_PBLUP.txt
-phereal=1
-DIR=phe_adj_PBLUP
-append=t
-
-## Xie2021
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Keller2022/Yield/ADP
-phef=ADP_dmu.txt
-# pedf=
-bfile=ADP
-all_eff="2 1"
-ran_eff="1"
-out=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Keller2022/Yield/phe_adj_PBLUP.txt
-phereal=3
-DIR=phe_adj_PBLUP
-append=t
-# mean=true

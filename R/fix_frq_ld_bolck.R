@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ### 根据不同品种之间LD一致性进行区间确定 ###
 
 # 加载需要的程序包
@@ -309,14 +309,3 @@ if (snp_total != sum(bin_cor$nsnp)) {
 write.table(bin_cor, opt$out, col.names = FALSE, row.names = FALSE)
 cat("File contain number of snps in bins has been output to: ", opt$out, "\n")
 cat("Number of bins after merging: ", nrow(bin_cor), "\n")
-
-
-## debug
-# setwd("/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Frq/frq_0.2/identical/cor0.25/multi")
-opt <- list()
-opt$prefixs <- "breedA_ref breedB_ref"
-opt$bin_merge <- "frq"
-opt$seg <- 0.1
-opt$win <- 100
-opt$map <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Frq/frq_0.2/identical/cor0.25/pA_pB.bim"
-opt$out <- "frq_0.1_100_full.txt"

@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 # debug
 # setwd('D:/CauDrive/QMSim/LD')
 # opt <- list(ldList="breedAsq_chr1 breedBsq_chr1", out="breedA_breedB_chr1", chr=1)
@@ -217,8 +217,3 @@ abline(h = mean(cor_win_n$cor), col = "red", lty = 3)
 #   scale_y_continuous(expand = c(0.001, 0.005))
 
 dev.off()
-
-opt <- list()
-opt$ldList <- "Sutaisq_chr2 Laiwusq_chr2"
-opt$chr <- 2
-opt$out <- "Sutai_Laiwu"

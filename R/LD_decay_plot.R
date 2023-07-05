@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 根据plink的LD结果进行 LD decay 和 LD phase correlation 作图,LD结果文件过大可能会运行慢
 # debug
 # opt <- list(files="breedAsq breedBsq", mapf = "breedAsq.map")
@@ -282,15 +282,3 @@ if (opt$plot == "F") {
 }
 
 cat("LD decay calculation and plot successfully.\n")
-
-
-## debug
-# setwd("/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Keller2022")
-opt <- list()
-opt$files <- "VEC ADP AxM MIP VEF"
-opt$popN <- "VEC ADP AxM MIP VEF"
-opt$bin1 <- 50
-opt$breaks <- 1000
-opt$bin2 <- 100
-opt$max <- 5000
-opt$out <- "g_VEC_ADP_AxM_MIP_VEF_5Mb"

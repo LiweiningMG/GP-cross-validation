@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 返回输出文件中某两列的相关系数
 
 ## 加载需要的程序包
@@ -50,10 +50,14 @@ if (is.null(opt$file2)) {
     data12 <- inner_join(data1, data2, by = c("CHR", "SNP"), suffix = c("_1", "_2"))
 
     ## 指定相同的参考碱基
+    miss <- apply(data12[, c("A2_2", "A2_1", "A1_1", "A1_2")], 1, function(row) any(row == "0"))
+    miss_trains <- (data12$A1_1 != data12$A1_2 | data12$A2_1 != data12$A2_2) & miss
     trans <- data12$A1_1 == data12$A2_2 & data12$A2_1 == data12$A1_2
+    trans <- trans | miss_trains
     matchs <- data12$A1_1 == data12$A1_2 & data12$A2_1 == data12$A2_2
     if (sum(trans, matchs) != nrow(data12)) {
-      cat("There are other types of conditions, please check (line91)\n")
+      cat("Allele inconsistency among breeds!\n")
+      cat("trans:", sum(trans), "matchs:", sum(matchs), "all:", nrow(data12), "\n")
       quit(status = 1)
     } else if (sum(trans) > 0) {
       ## 更改碱基和基因频率
@@ -91,10 +95,3 @@ if (is.null(opt$file2)) {
 
 ## 报告整体相关去情况
 cat(cors, "\n")
-
-## debug
-opt <- list()
-opt$file1 <- "/public/home/liujf/liwn/mbGS/QMSim/S0620/rand/breedBsq.ld"
-opt$file2 <- "/public/home/liujf/liwn/mbGS/QMSim/S0620/rand/breedAsq.ld"
-# opt$col1 = 5
-# opt$by1c = 2

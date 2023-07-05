@@ -2,9 +2,9 @@
 
 
 ########################################################################################################################
-## 版本: 1.0.0
+## 版本: 1.1.0
 ## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-05-02
+## 日期: 2023-07-05
 ## 简介: 用于基于BLUP/Bayes交叉验证准确性计算
 ##
 ## 使用: ./single_breed.sh --label "breedA" --phef /path/to/your/phenotype ...(详细参数请通过--help查看)
@@ -50,7 +50,7 @@ while true; do
       --year)    year="$2";       shift 2 ;; ## 有表型个体中在该年份之后出生为验证群
       --iyse)    iyse="$2";       shift 2 ;; ## 提供year时须提供，格式为idcol:yearcol:yeas_star:year_end
       --tbvf)    tbvf="$2";       shift 2 ;; ## 真实育种值文件，若提供tbv_col但tbvf缺失，则tbvf设为表型文件
-      --tbv_col) tbv_col="$2";    shift 2 ;; ## 真实育种值在表型文件的第几列
+      --tbv_col) tbv_col="$2";    shift 2 ;; ## 真实育种值在表型文件的第几列，当真实育种值即为表型文件中相应列表型时参数应为"same"
       --phereal) phereal="$2";    shift 2 ;; ## 表型在表型文件中实数列的位置 [1]
       --all_eff) all_eff="$2";    shift 2 ;; ## DIR中$MODEL第3行，前3位数不需要，只需要所有效应所在的列，如"2 3 1"
       --ran_eff) ran_eff="$2";    shift 2 ;; ## DIR中$MODEL第4行，第1位数不需要，只需要所有随机效应所在分组，如"1" [1]
@@ -103,7 +103,7 @@ rep=${rep:=1}                                 ## 重复
 fold=${fold:=1}                               ## 验证分组数
 miss=${miss:=-99}                             ## 缺失表型表示
 method=${method:=GBLUP}                       ## 育种值估计方法
-software=${software:=C}                    ## 育种值估计软件
+software=${software:=C}                       ## 育种值估计软件
 out=${out:=accuracy.txt}                      ## 准确性输出文件名
 invA=${invA:=2}                               ## A逆构建方式，默认考虑近交
 [[ ${tbv_col} && ! ${tbvf} ]] && tbvf=${phef} ## 含有真实育种值的文件
@@ -112,12 +112,16 @@ invA=${invA:=2}                               ## A逆构建方式，默认考虑
 ## 主文件夹
 workdir=$(pwd)
 
+## 日志文件夹
+logp=${workdir}/log
+mkdir -p ${logp}
+
 ## 脚本所在文件夹
 if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
   script_path=$(dirname "$(readlink -f "$0")")
-  code="${script_path%%code*}code"
+  code=$(dirname "$script_path")
 fi
 
 ## 脚本
@@ -141,7 +145,7 @@ export PATH=${code}/bin:$PATH
 if [[ ! -s ${phef} ]]; then
   echo "phenotype file ${phef} not found! "
   exit 1
-elif [[ ! -s ${bfile}.fam && ! -s ${gidf} && ! -s ${pedf} ]]; then
+elif [[ ! -s ${bfile}.fam && ! -s ${bfile}.map && ! -s ${gidf} && ! -s ${pedf} ]]; then
   echo "plink file ${bfile}.fam, pedigree file ${pedf} or genotyped individuals id file ${gidf} not found! "
   exit 1
 elif [[ -s ${gmat} && ${method} == "ssGBLUP" && ! -s ${gidf} ]]; then
@@ -214,16 +218,24 @@ if [[ ${bfile} && ! -s ${bfile}.bim ]]; then
     echo "plink file ${bfile}.map not found! "
     exit 1
   else
-    plink --file ${bfile} --chr-set ${nchr} --make-bed --out ${label} >>plink.log
+    ## 提取指定染色体上的标记
+    plink \
+      --file ${bfile} \
+      --chr-set ${nchr} \
+      --make-bed --out ${label} >${logp}/plink_single_copy.log
     bfile=$(pwd)/${label}
   fi
 elif [[ -s ${bfile}.bim ]]; then
-  plink --bfile ${bfile} --chr-set ${nchr} --make-bed --out ${label} >>plink.log
+  plink \
+    --bfile ${bfile} \
+    --chr-set ${nchr} \
+    --make-bed --out ${label} >${logp}/plink_single_copy.log
   bfile=$(pwd)/${label}
 fi
 
 #####################  表型文件  ####################
 ####################################################
+phe_col=$((phereal + num_int))
 ## 筛选出同时有基因型和表型和个体作为参考群
 if [[ -s ${bfile}.fam ]]; then
   $keep_phe_gid \
@@ -231,13 +243,17 @@ if [[ -s ${bfile}.fam ]]; then
     --phef ${phef} \
     --rm single \
     --num_int ${num_int} \
-    --phec $((phereal + num_int)) \
+    --phec ${phe_col} \
     --rmOut gid_miss_phe.txt
 fi
 ## 删除没有表型信息的基因型个体
 if [[ -s gid_miss_phe.txt ]]; then
   echo "remove $(wc -l <gid_miss_phe.txt) individuals without phenotype"
-  plink --bfile ${bfile} --chr-set ${nchr} --remove gid_miss_phe.txt --make-bed --out ${bfile} >>plink.log
+  plink \
+    --bfile ${bfile} \
+    --chr-set ${nchr} \
+    --remove gid_miss_phe.txt \
+    --make-bed --out ${bfile} >${logp}/plink_single_rm_phemiss.log
 fi
 ## 表型文件中整型列后添加1列截距项(整列设为"1")
 if [[ ${mean} ]]; then
@@ -355,6 +371,7 @@ if [[ ${overwrite} ]]; then
   [[ ${gen} ]] && option="${option} --gen ${gen} --pedf ${pedf}"               ## 按世代划分
   [[ ${year} && ${iyse} ]] && option="${option} --year ${year} --iyse ${iyse}" ## 按出生年份划分
   [[ ! ${valphe} && -s ${bfile}.fam ]] && option="${option} --fam ${bfile}.fam"
+
   ## 划分出参考群和验证群
   $phe_group \
     --phef "${phef}" \
@@ -366,14 +383,16 @@ if [[ ${overwrite} ]]; then
     --outdir "${workdir}/val#val#/rep#rep#" \
     --rminvail \
     --keepid "${workdir}/keep_fid_id.txt" \
-    --pheCol $((phereal + num_int)) \
+    --pheCol ${phe_col} \
     ${option}
+
   ## 只保留可以作为参考群的个体基因型(有表型、基因型、固定效应水平不缺失)
   if [[ -s ${workdir}/keep_fid_id.txt ]]; then
     plink --bfile ${bfile} \
       --chr-set ${nchr} \
       --keep ${workdir}/keep_fid_id.txt \
-      --make-bed --out ${bfile} >${bfile}_rmMiss.log
+      --make-bed --out ${bfile} >${logp}/plink_full_set.log
+
     rm ${bfile}.fam~ ${bfile}.bim~ ${bfile}.bed~
     echo "keep $(wc -l <${workdir}/keep_fid_id.txt) individuals in geneotype file."
   fi
@@ -414,20 +433,16 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
 
       if [[ ${software} ==   "JWAS" ]]; then
         ## raw格式基因型文件
-        if [[ ! -s ${bfile}.raw ]]; then
-          if [[ -s ${bfile}.fam ]]; then
-            plink --bfile ${bfile} --chr-set ${nchr} --recode A --out ${bfile}
-          else
-            echo "${bfile}.fam not found! "
-            exit 1
-          fi
-        fi
+        [[ ! -s ${bfile}.raw ]] && \
+          plink --bfile ${bfile} \
+          --chr-set ${nchr} \
+          --recode A --out ${bfile} >${logp}/plink_recodeA.log
 
         job_pool_run $bayesAS_JWAS \
           --rawf ${bfile}.raw \
           --phef ${workdir}/val${f}/rep${r}/pheno.txt \
           --fix ${fix_eff} \
-          --y $((phereal + num_int)) \
+          --y ${phe_col} \
           --binf ${binf} \
           --iter ${iter} \
           --burnin ${burnin} \
@@ -436,7 +451,7 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
           --npop 1 \
           --rnd "${ran_eff}" \
           --seed ${seed} \
-          --logf ${workdir}/bayesA_val${f}_rep${r}_${bin}.log \
+          --logf ${workdir}/val${f}/rep${r}/bayesA_val${f}_rep${r}_${bin}.log \
           --rm_tmp
           # --method BayesA \
       elif [[ ${software} == "C" ]]; then
@@ -444,7 +459,7 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
           --bfile ${bfile} \
           --phef ${workdir}/val${f}/rep${r}/pheno.txt \
           --fix "${fix_eff}" \
-          --phe $((phereal + num_int)) \
+          --phe ${phe_col} \
           --binf ${binf} \
           --iter ${iter} \
           --burnin ${burnin} \
@@ -458,12 +473,16 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
           --seed ${seed} \
           --logf ${bin}_gibs_${SLURM_JOB_ID}.log
       else
-        echo "soft ${software} not supported!"
+        echo "soft ${software} not supported! "
       fi
-    elif [[ ${dmu4} ]]; then
-      [[ ! ${debug} ]] && job_pool_run run_dmu4 ${DIR} ${workdir}/val${f}/rep${r}
-    else
-      [[ ! ${debug} ]] && job_pool_run run_dmuai ${DIR} ${workdir}/val${f}/rep${r}
+    fi
+
+    if [[ ${method}  =~ "BLUP" ]]; then
+      if [[ ${dmu4} ]]; then
+        [[ ! ${debug} ]] && job_pool_run run_dmu4 ${DIR} ${workdir}/val${f}/rep${r}
+      else
+        [[ ! ${debug} ]] && job_pool_run run_dmuai ${DIR} ${workdir}/val${f}/rep${r}
+      fi
     fi
   done
 done
@@ -477,7 +496,12 @@ job_pool_shutdown
 ###################################################
 ## 参数
 [[ ${rmNeg} ]] && rmNeg=" --rmNeg " ## 是否删除准确性计算结果中的负值（异常）
-[[ ${tbv_col} ]] && option=" --tbv_col ${tbv_col}"
+if [[ ${tbv_col} == "same" ]]; then
+  ## 文件中的原表型列作为校正表型
+  option=" --tbv_col ${phe_col}"
+elif [[ ${tbv_col} ]]; then
+  option=" --tbv_col ${tbv_col}"
+fi
 [[ ${tbvf} ]] && option="${option} --tbvf ${tbvf} "
 if [[ ${method} =~ 'BLUP' ]]; then
   ## BLUP模型
@@ -502,114 +526,9 @@ $accur_cal \
   ${option} \
   --out ${workdir}/${out}
 
-
 ###################  删除中间文件  #####################
 ########################################################
 ## 参数卡
 rm ${workdir}/${DIR}.DIR
 
 [[ $? -ne 0 ]] && echo "Accuracy calculation completed, file output to: ${out}"
-
-## debug
-## FJYC CFJY
-# cd /public/home/liujf/liwn/mbGS/Real/rmodel/ADG/YY
-phef=/public/home/liujf/liwn/mbGS/Real/data/pheno_dmu_YY.txt
-pedf=/public/home/liujf/liwn/mbGS/Real/data/pedi_dmu_YY.txt
-DIR=within
-bfile=/public/home/liujf/liwn/mbGS/Real/rmodel/ADFI/YY
-all_eff="2 1"
-ran_eff=1
-rep=5
-fold=5
-phereal=1
-tbvf=/public/home/liujf/liwn/mbGS/Real/YCJY/AGE/phe_adj_PBLUP.txt
-thread=9
-mean=true
-out=accur_GBLUP.txt
-
-## QMSim
-# cd /public/home/liujf/liwn/mbGS/QMSim/Frq/frq_0.1/normal/cor0.2/breedA
-phef="breedA_dmu_pheno.txt"
-pedf="/public/home/liujf/liwn/mbGS/QMSim/Frq/breedA_pedi.txt"
-DIR="within"
-bfile="/public/home/liujf/liwn/mbGS/QMSim/Frq/frq_0.1/breedAm"
-all_eff="2 1"
-rep="5"
-fold="2"
-gen="1"
-phereal="5"
-tbv_col="4"
-thread="10"
-out="accur_GBLUP.txt"
-
-## Real
-# cd /home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/PFAI/YY
-label=YY
-phef="/home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/phenotypes_dmu.txt"
-DIR="within"
-bfile="/home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/PFAI/YY/YY"
-method="GBLUP"
-# binf="/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/MS/multi_YY_LL/fix_100.txt"
-software="C"
-all_eff="2 1"
-ran_eff="1"
-seed="8123"
-rep="5"
-fold="5"
-phereal="1"
-tbvf="/home/liujf/WORKSPACE/liwn/mbGS/data/Xie2021/PFAI/phe_adj_PBLUP.txt"
-thread="25"
-code="/home/liujf/WORKSPACE/liwn/mbGS/code/"
-out="accur_GBLUP.txt"
-
-# cd /home/liujf/WORKSPACE/liwn/mbGS/Real/Keller2022/100SdW/VEC
-label=VEC
-phef="VEC_dmu.txt"
-DIR="within"
-bfile="VEC"
-# tbvf="/public/home/liujf/liwn/mbGS/Real/Keller2022/100SdW/phe_adj_PBLUP.txt"
-tbv_col=3
-all_eff="2 1"
-ran_eff="1"
-rep="5"
-fold="5"
-phereal="1"
-thread="25"
-# mean=true
-out="accur_GBLUP.txt"
-binf=/public/home/liujf/liwn/mbGS/Real/Keller2022/100SdW/multi_VEC_ADP_AxM_MIP_VEF/cubic_B_50.txt
-
-# cd /public/home/liujf/liwn/mbGS/Real/YCZY/AGE/FJYC
-label=FJYC
-phef="FJYC_dmu.txt"
-DIR="within"
-bfile="FJYC"
-tbvf="/public/home/liujf/liwn/mbGS/Real/YCZY/AGE/phe_adj_PBLUP.txt"
-all_eff="2 1"
-ran_eff="1"
-rep="5"
-fold="5"
-phereal="1"
-thread="25"
-out="accur_GBLUP.txt"
-
-## BayesAS
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep1/uniform/cor0.4/A
-label=A
-phef="A_dmu_pheno.txt"
-pedf="/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep1/A_pedi.txt"
-bfile="/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep1/uniform/cor0.4/Amq"
-method="BayesAS"
-binf="/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Two/rep1/uniform/cor0.4/multi_A_B/fix_100.txt"
-software="C"
-all_eff="2 1"
-ran_eff="1"
-rep="10"
-fold="2"
-gen="1"
-phereal="4"
-tbv_col="4"
-seed="375714"
-thread="25"
-out="accur_BayesAS.txt"
-

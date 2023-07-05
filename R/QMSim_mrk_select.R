@@ -1,5 +1,6 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
-### liwn 2022-06-29 ###
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+
+### liwn 2022-07-05 ###
 ### 根据条件设定在QMSim标记中选择一定数目的标记 ###
 
 # 加载需要的程序包
@@ -55,8 +56,14 @@ if (is.null(opt$difp))     opt$difp <- "0.05"
 if (is.null(opt$dif2pq))   opt$dif2pq <- "0.1"
 if (is.null(opt$format))   opt$format <- "index"
 if (is.null(opt$out))      opt$out <- "mrk.txt"
-if (is.null(opt$seed))     opt$seed <- Sys.time()
 if (is.null(opt$inOut))    opt$inOut <- "ex"
+
+## 随机数种子
+if (is.null(opt$seed)) {
+  opt$seed <- Sys.time()
+  write.table(opt$seed, paste0(out, ".seed"))
+}
+set.seed(opt$seed)
 
 ## 函数
 insufficient_snps <- function(left, need, step) {
@@ -323,7 +330,6 @@ if (!is.null(opt$binDiv)) {
 cat("Number of candidate SNPs:", nrow(datas), "\n")
 
 ## 在不同的区间内选择候选标记
-set.seed(opt$seed)
 if (opt$binPdf == "eql") {
   ## 每个区间需要的标记数
   nsnp_bini <- opt$nsel %/% length(unique(datas$bins)) + 1
@@ -441,17 +447,3 @@ if (!is.null(opt$Mapf)) {
   write.table(out2, opt$Out, row.names = FALSE, col.names = FALSE, quote = FALSE)
   cat("File 2 output to:", opt$Out, "\n")
 }
-
-## debug
-# setwd("/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four")
-opt <- list()
-opt$freqf <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/simOut/%pop%_freq_mrk_001.txt"
-opt$popN <- "A B C D"
-opt$mapf <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Four/simOut/lm_mrk_001.txt"
-opt$nsel <- 50000
-opt$binDiv <- "pos"
-opt$binThr <- 10
-opt$maf <- 0.01
-opt$out <- "mrk_sel_index.txt"
-opt$outmapf <- "A.map"
-opt$seed <- 8123

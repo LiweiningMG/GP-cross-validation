@@ -54,8 +54,6 @@ dkms.conf
 # zip file
 *.zip
 
-# history file
-.history/
 
 # disk temp files
 .diskspace
@@ -63,3 +61,14 @@ dkms.conf
 
 # debug
 build/
+
+# log files
+log
+
+# addin
+.vscode
+.VSCodeCounter
+.history
+
+# software
+bin

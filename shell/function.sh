@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ########################################################################################################################
-## 版本: 1.0.0
+## 版本: 1.1.0
 ## 作者: 李伟宁 liwn@cau.edu.cn
 ## 日期: 2023-05-17
 ## 简介: 用于保存自定义的函数
@@ -71,7 +71,7 @@ check_plink() {
   fi
 
   ## 文件格式
-  for prefix in "$@"; do
+  for prefix in $1; do
     if [[ ! -f ${prefix}.fam ]]; then
       if [[ -f ${prefix}.map ]]; then
         plink \
@@ -117,9 +117,9 @@ merge_plink() {
   touch merge_${seed_tmp}.txt
 
   ## 检查各群体的plink文件是否存在
-  check_plink ${plink_list[0]}
+  check_plink "${plink_list[0]}" ${nchr}
   for i in $(seq 1 $((nfiles - 1))); do
-    check_plink ${plink_list[${i}]}
+    check_plink "${plink_list[${i}]}" ${nchr}
     echo ${plink_list[${i}]} >>merge_${seed_tmp}.txt
   done
 

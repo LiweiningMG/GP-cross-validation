@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 根据提供的plink二进制文件估计LD独立区域 ##
 
 ## 命令行参数
@@ -160,14 +160,3 @@ if (is.null(opt$keep)) {
   cat(tmp_dir, "has been deleted.\n")
   unlink(tmp_dir, recursive = TRUE)
 }
-
-# debug
-# setwd("/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Frq/frq_0.1/identical/cor0.1/local_h2")
-opt <- list()
-opt$summ1 <- "breedA.assoc.txt"
-opt$summ2 <- "breedB.assoc.txt"
-opt$nA <- 2000
-opt$nB <- 400
-opt$bfile <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Frq/frq_0.1/identical/cor0.1/breedA/breedA"
-opt$block <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Frq/frq_0.1/breedBm_bin.txt.noqtl2"
-opt$out <- "debug.txt"

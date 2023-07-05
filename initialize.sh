@@ -1,9 +1,9 @@
 #!/usr/bin/bash
 
 ########################################################################################################################
-## 版本: 1.0.0
+## 版本: 1.1.0
 ## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-05-30
+## 日期: 2023-07-05
 ## 
 ## 用于初始化该项目脚本中的路径，主要包括
 ## 1.更换R语言脚本中的解释器路径
@@ -27,11 +27,11 @@ fi
 cd ${main_path} || exit 5
 
 ## 将主脚本中的脚本路径进行替换
-sed -i -E "s|(GP_cross=).*/(GP_cross_validation.sh)|\1${main_path}/code/\2|" multibreed_main.sh
-sed -i -E "s|(code=).*/(code)|\1${main_path}/\2|" multibreed_main.sh
+sed -i -E "s|(code=).*/(GP-cross-validation)|\1${main_path}|" multibreed_main.sh
+sed -i -E "s|(output=).*/(GP-cross-validation)|\1${main_path}|" ./shell/GP_cross_validation.sh
 
 ## 加载自定义函数
-func=${main_path}/code/shell/function.sh
+func=${main_path}/shell/function.sh
 [[ ! -s ${func} ]] && echo "Error: ${func} not found! " && exit 5
 source ${func}
 
@@ -40,7 +40,7 @@ check_command R Rscript
 R_PATH=$(which Rscript)
 
 ## 将R脚本中的第一行替换为脚本上述的脚本解释器
-find ./code/R -name "*.R" | while read -r file; do
+find ./R -name "*.R" | while read -r file; do
   # 检查脚本的第一行是否为脚本解释器路径
   if [[ $(head -n 1 "$file") =~ ^#!.*Rscript$ ]]; then
     # 替换第一行中的脚本解释器路径为 R_PATH 变量中保存的路径
@@ -53,8 +53,12 @@ done
 
 ## 将所有的脚本赋予可执行权限
 chmod u+x multibreed_main.sh
-chmod u+x ./code/bin/* ./code/R/* ./code/shell/*
+chmod u+x ./bin/* ./R/* ./shell/*
+
+## 检查需要的R包是否已安装
+${main_path}/R/package_required.R
 
 ## 创建需要的文件夹
+mkdir -p ${main_path}/log
 
 [[ $? -eq 0 ]] && echo "Initialization completed."

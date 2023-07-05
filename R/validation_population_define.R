@@ -1,7 +1,8 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
-## divide populations into reference and candidate  ###
-## debug
-# opt = list(fold=5, pheno='LineA_LineB_pheno.txt', iyse='2', phe='10')
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+
+## liwn@cau.edu.cn 2023-07-05
+## 根据要求划分用于计算遗传评估的准确性所用的参考群和验证群 ##
+## 可根据出生年份、世代等进行划分 ##
 
 # Load packages
 cat("Loading packages needed...\n")
@@ -260,18 +261,3 @@ for (r in 1:opt$rep) { # nolint
 }
 
 cat("phenotype grouped completed.\n")
-
-## debug
-opt <- list()
-opt$phef <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Mao2023/AGE/YY/pheno_within.txt"
-opt$nonmiss <- "2 1"
-opt$rep <- 5
-opt$fold <- 2
-opt$gen <- 1
-opt$pedf <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Mao2023/data/pedigrees.txt"
-opt$outvid <- "val.id"
-opt$outdir <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Mao2023/AGE/YY/val#val#/rep#rep#"
-opt$rminvail <- TRUE
-opt$keepid <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Mao2023/AGE/YY/keep_fid_id.txt"
-opt$pheCol <- "4"
-opt$fam <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Mao2023/AGE/YY/YY.fam"

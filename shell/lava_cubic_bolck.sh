@@ -1,9 +1,9 @@
 #!/usr/bin/bash
 
 ########################################################################################################################
-## 版本: 1.0.0
+## 版本: 1.1.0
 ## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-06-02
+## 日期: 2023-07-05
 ## 
 ## 简介: 使用ldblock将基因组根据ld信息划分成近似独立的ld块
 ## 软件链接：https://github.com/cadeleeuw/lava-partitioning
@@ -80,7 +80,7 @@ if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
   script_path=$(dirname "$(readlink -f "$0")")
-  code="${script_path%%code*}code"
+  code=$(dirname "$script_path")
 fi
 
 ## 软件/脚本
@@ -209,11 +209,3 @@ sed -i '1i LOC CHR START STOP nSNP' ${out}
 ## 报告
 echo "number of blocks: $(sed '1d' ${out} | wc -l)"
 echo "blocks information file output to: ${out}"
-
-## debug
-# cd /BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/PFAI/multi
-bfile=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/PFAI/multi/merge
-win=50
-type=cubic
-maf=-0.01
-out=/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Xie2021/PFAI/multi/cubic_M_50.txt~

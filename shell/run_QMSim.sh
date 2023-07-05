@@ -2,9 +2,9 @@
 #SBATCH --job-name=accuracy
 
 ########################################################################################################################
-## 版本: 1.0.0
+## 版本: 1.1.0
 ## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-06-02
+## 日期: 2023-07-05
 ## 
 ## 根据指定的参数，生成QMSim软件所需的参数文件*.prm，并运行QMSim软件进行群体模拟
 ## 
@@ -20,7 +20,7 @@
 ####################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o h --long proj:,breeds:,thread:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,nchr:,nmloc:,nqloci:,QMSim_h2:,QMSim_qtlh2:,QMSim_rep:,bottleneck:,code:,prmpath:,sim_dir:,help \
+TEMP=$(getopt -o h --long proj:,breeds:,thread:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,nchr:,nmloc:,nqloci:,QMSim_h2:,QMSim_qtlh2:,QMSim_rep:,bottleneck:,code:,prmpath:,sim_dir:,logf:,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -30,7 +30,6 @@ while true; do
     --proj )         proj="$2";         shift 2 ;; ## 项目目录 [必要参数]
     --breeds )       breeds="$2";       shift 2 ;; ## 群体/品种标识符，如'YY DD' ["A B"]
     --thread )       thread="$2";       shift 2 ;; ## QMSim运行时的线程数 [10]
-    --nginds )       nginds="$2";       shift 2 ;; ## 各品种在输出基因型的群体中选择的基因型个体数 ["3000 300"]
     --seg_gens )     seg_gens="$2";     shift 2 ;; ## 各品种从历史群体中分离后，分离的世代数 ["40 10"]
     --extentLDs )    extentLDs="$2";    shift 2 ;; ## 各品种最后稳定LD经历的世代数 ["10 10"]
     --last_males )   last_males="$2";   shift 2 ;; ## 各品种最后一个阶段的群体中的雄性个体数 ["100 10"]
@@ -47,6 +46,7 @@ while true; do
     --QMSim_qtlh2 )  QMSim_qtlh2="$2";  shift 2 ;; ## 性状的狭义遗传力大小 [0.3]
     --QMSim_rep )    QMSim_rep="$2";    shift 2 ;; ## QMSim模拟重复次数 [1]
     --bottleneck )   bottleneck="$2";   shift 2 ;; ## 历史群体模拟中的瓶颈阶段个体数 [250]
+    --logf )         logf="$2";         shift 2 ;; ## 日志文件名 [QMSim_${sim_dir}.txt]
     --code )         code="$2";         shift 2 ;; ## 脚本文件所在目录，如/BIGDATA2/cau_jfliu_2/liwn/code [自动获取]
     --prmpath )      prmpath="$2";      shift 2 ;; ## 参数卡模板文件所在路径 [${code}/prm]
     --sim_dir )      sim_dir="$2";      shift 2 ;; ## 模拟结果文件输出文件夹名，注意该文件夹不能已存在 [rep1]
@@ -70,7 +70,7 @@ if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
   script_path=$(dirname "$(readlink -f "$0")")
-  code="${script_path%%code*}code"
+  code=$(dirname "$script_path")
 fi
 
 ## 将程序路径加到环境变量中
@@ -114,6 +114,7 @@ QMSim_qtlh2=${QMSim_qtlh2:="${QMSim_h2}"}
 bottleneck=${bottleneck:="250"}
 thread=${thread:="10"}
 prmpath=${prmpath:="${code}/prm"}
+logf=${logf:="QMSim_${sim_dir}.txt"}
 
 ## 获取品种个数
 read -ra breeds <<<"$breeds"
@@ -127,11 +128,9 @@ last_litters=${last_litters:=$(printf "%${np}s" | sed "s/ /10 /g" | sed 's/ *$//
 extentLDs=${extentLDs:=$(printf "%${np}s" | sed "s/ /10 /g" | sed 's/ *$//')}
 last_males=${last_males:=$(printf "%${np}s" | sed "s/ /40 /g" | sed 's/ *$//')}
 last_females=${last_females:=$(printf "%${np}s" | sed "s/ /200 /g" | sed 's/ *$//')}
-nginds=${nginds:=$(printf "%${np}s" | sed "s/ /600 /g" | sed 's/ *$//')}
 seg_gens=${seg_gens:=$(printf "%${np}s" | sed "s/ /40 /g" | sed 's/ *$//')}
 
 ## 解析参数
-read -ra nginds <<<"$nginds"
 read -ra seg_gens <<<"$seg_gens"
 read -ra last_males <<<"$last_males"
 read -ra last_females <<<"$last_females"
@@ -203,14 +202,11 @@ sed "s#%out_dir%#${sim_dir}#" ${prmpath}/temp_${rand}.prm >QMSim.prm
 rm ${prmpath}/temp_${rand}.prm
 
 ## QMSim模拟程序运行
-QMSim QMSim.prm
+QMSim QMSim.prm >> ${logf} 2>&1
 
 ## 更换工作路径
+rm QMSim.prm
 cd ${proj}/${sim_dir} || exit
 
 ## 保存QMSim模拟种子
 cp seed QMSim_${sim_dir}_seed.prv
-
-## debug
-code=/home/liujf/WORKSPACE/liwn/mbGS/code
-proj=/home/liujf/WORKSPACE/liwn/mbGS/data/Two

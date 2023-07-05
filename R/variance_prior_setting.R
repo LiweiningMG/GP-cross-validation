@@ -1,4 +1,6 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+
+## liwn@cau.edu.cn 2023-07-05
 ## 根据表型方差估计近似遗传和残差方差，用作初始值
 
 # 加载需要的程序包

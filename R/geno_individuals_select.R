@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 根据QMSim输出的表型文件_data_***.txt选择基因型个体
 
 # Load packages
@@ -15,6 +15,7 @@ spec <- matrix(
     "gen_sel",  "G", 1, "character", "[Optional] generation to selected eg. 10 [last one]",
     "fid",      "F", 1, "character", "[Optional] Output ID file with FID column",
     "out",      "O", 1, "character", "[Optional] Output file name prefix [keep_geno_ids.txt]\n",
+    "seed",     "s", 2, "integer",   "[Optional] [NULL]",
     "outIndex", "i", 0, "logical",   "[Optional] selected Ind index in dataf \n",    
     "help",     "h", 0, "logical",   "This is Help!"),
   byrow = TRUE, ncol = 5)
@@ -31,6 +32,13 @@ if (!is.null(opt$help) || is.null(opt$dataf)) {
 ## default parameters
 if (is.null(opt$out)) opt$out <- "keep_geno_ids.txt"
 if (is.null(opt$nlitter)) opt$nlitter <- 2
+
+## 随机数种子
+if (is.null(opt$seed)) {
+  opt$seed <- Sys.time()
+  write.table(opt$seed, paste0(out, ".seed"))
+}
+set.seed(opt$seed)
 
 ## 读取表型文件
 if (file.exists(opt$dataf)) {
@@ -95,13 +103,3 @@ write.table(keep, opt$out, row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 cat("Total selected:", nsel_final, "\n")
 cat("ids selected output to:", opt$out, "\n")
-
-# setwd('/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Ratio/rep1')
-opt <- list()
-opt$dataf <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/QMSim/Ratio/rep1/breedB_data_001.txt"
-opt$nsel <- 400
-opt$gen_all <- "6-10"
-opt$gen_sel <- "10"
-opt$nlitter <- 2
-opt$outIndex <- TRUE
-opt$out <- "test_breedA_index.txt"

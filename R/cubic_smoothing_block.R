@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 根据自编的C语言程序计算的mean R2值进行区域划分
 # debug
 # opt <- list(files="breedAsq breedBsq", mapf = "breedAsq.map")
@@ -132,10 +132,3 @@ if (!is.null(opt$plot)) {
   dev.off()
   cat("plot has been output to:", paste0(opt$out, ".png"), "\n")
 }
-
-quit()
-setwd("/BIGDATA2/cau_jfliu_2/liwn/code/GitHub/data")
-opt <- list()
-opt$r2 <- "ld_block_tmp_1.breaks"
-opt$out <- "cubic.txt"
-opt$bim <- "ld_block_tmp_1.bim"

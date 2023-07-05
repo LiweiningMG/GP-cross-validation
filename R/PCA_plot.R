@@ -1,4 +1,5 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+
 ## 根据plink特征向量结果进行 PCA 作图
 ## 输入文件：plink生成的主成分分析结果文件*.eigenvec，前4列需要为FID、IID、PC1、PC2
 
@@ -86,9 +87,3 @@ ggplot(pca, aes(x = PC1, y = PC2, colour = group, shape = group)) +
 
 hide_message <- dev.off()
 cat("PCA plot successfully.\n")
-
-
-## debug
-opt <- list()
-opt$eigv <- "LineA_LineB_pca.txt"
-opt$out <- "CFJY_YY_CFJY_DD_pca"

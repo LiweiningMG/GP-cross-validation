@@ -1,4 +1,4 @@
-#!/apps/local/software/program/R-4.0.2/bin/Rscript
+#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
 ## 将输入的表型文件按照基因型文件个体顺序进行排序
 ## opt <- list(fam='DD_num.fam', pheno='gwas_pca_DD.fam')
 
@@ -71,13 +71,3 @@ if (length(missid) > 0) {
     write.table(phe, opt$out, row.names = FALSE, col.names = FALSE, quote = FALSE)
     cat("No individuals with the missing phenotype found, output file copy.\n")
 }
-
-
-## debug
-opt <- list()
-opt$file <- "ADP_dmu.txt"
-opt$col <- 5
-opt$missid <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Keller2022/Yield/ADP/miss_phe.id"
-opt$out <- "/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/Keller2022/Yield/ADP/pheno_adj.txt"
-opt$map <- "ADP.fam"
-opt$miss <- -99

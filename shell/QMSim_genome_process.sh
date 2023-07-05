@@ -1,10 +1,10 @@
-#!/bin/bash
-#SBATCH --job-name=accuracy
+#!/usr/bin/bash
+
 
 ########################################################################################################################
-## 版本: 1.0.0
+## 版本: 1.1.0
 ## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-06-03
+## 日期: 2023-07-05
 ## 
 ## 根据指定的参数，生成QMSim软件所需的参数文件*.prm
 ## 
@@ -20,7 +20,7 @@
 ####################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o h --long proj:,breeds:,rep:,nsnp:,geno_gen:,geno_sel:,binDiv:,binThr:,maf:,nginds:,litters:,females:,code:,out:,help \
+TEMP=$(getopt -o h --long proj:,breeds:,rep:,nsnp:,geno_gen:,geno_sel:,binDiv:,binThr:,maf:,nginds:,last_litters:,last_females:,code:,out:,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -37,6 +37,7 @@ while true; do
     --binThr )   binThr="$2";   shift 2 ;; ## 抽样SNP时区间划分长度，物理位置cM或基因频率步长 [10]
     --maf )      maf="$2";      shift 2 ;; ## 抽样SNP时允许的最小等位基因频率 [10]
     --nginds )   nginds="$2";   shift 2 ;; ## 每个品种选择的基因型个体数 ["600 600 ..."]
+    --nchr )     nchr="$2" ;    shift 2 ;;  ## 染色体数目 [30]
     --last_litters )  litters="$2";  shift 2 ;; ## 各品种在LD稳定阶段的每窝个体数 ["10 10 ..."]
     --last_females )  females="$2";  shift 2 ;; ## 各品种最后一个阶段的群体中的雌性个体数 ["500 500 ..."]
     --code )     code="$2";     shift 2 ;; ## 脚本文件所在目录，如/BIGDATA2/cau_jfliu_2/liwn/code [NULL]
@@ -61,7 +62,7 @@ if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
   script_path=$(dirname "$(readlink -f "$0")")
-  code="${script_path%%code*}code"
+  code=$(dirname "$script_path")
 fi
 
 ## 路径/脚本
@@ -110,6 +111,8 @@ np=${#breeds[@]}
 nginds=${nginds:=$(printf "%${np}s" | sed "s/ /600 /g" | sed 's/ *$//')}
 litters=${litters:=$(printf "%${np}s" | sed "s/ /10 /g" | sed 's/ *$//')}
 females=${females:=$(printf "%${np}s" | sed "s/ /200 /g" | sed 's/ *$//')}
+# echo "line113: nginds=${nginds}"
+# echo "line114: females=${females}" && exit
 
 ## 解析参数
 read -ra nginds <<<"$nginds"
@@ -151,6 +154,7 @@ for j in $(seq 0 $((np - 1))); do
     --gen_sel ${geno_sel} \
     --nsel ${nginds[${j}]} \
     --outIndex \
+    --seed ${seed} \
     --out ${breeds[${j}]}_Ind_sel_index.txt
 
   ## map文件
@@ -172,7 +176,7 @@ wait
 
 ## 质控
 for b in "${breeds[@]}"; do
-  plink --file ${b} --maf 0.01 --make-bed --out ${b}q
+  plink --file ${b} --maf 0.05 --make-bed --out ${b}q
 done
 
 ## 筛选出在所有品种中均通过质控的标记位点
@@ -182,7 +186,7 @@ for b in "${breeds[@]}"; do
 done
 
 ## pca计算
-qc_files=("${breeds[@]/%/q}")
+qc_files=("${breeds[@]/%/m}")
 $PCA_cal --pre_list "${qc_files[*]}" --fids "${breeds[*]}" --fid
 
 ## pca作图
@@ -193,18 +197,18 @@ $PCA_plot \
 ## LD计算
 for b in "${breeds[@]}"; do
   plink \
-    --bfile ${b}q \
+    --bfile ${b}m \
     --freq \
     --r2 \
     --ld-window-kb ${windows} \
     --ld-window ${inter} \
     --ld-window-r2 ${r2} \
-    --out ${b}q
+    --out ${b}m
 done
 
 ## LD结果统计、作图
 $LD_cor \
-  --files "$(printf '%sq ' "${breeds[@]}")" \
+  --files "$(printf '%sm ' "${breeds[@]}")" \
   --popN "${breeds[*]}" \
   --bin1 50 \
   --breaks 1000 \
@@ -218,7 +222,7 @@ for t in frq ld; do
   for bi in $(seq 0 $((np - 1))); do
     for bj in $(seq ${bi} $((np - 1))); do
       [[ ${bi} == "${bj}" ]] && continue
-      cor=$($corr_cal --file1 ${breeds[${bi}]}q.${t} --file2 ${breeds[${bj}]}q.${t})
+      cor=$($corr_cal --file1 ${breeds[${bi}]}m.${t} --file2 ${breeds[${bj}]}m.${t})
       echo "${breeds[${bi}]} ${breeds[${bj}]} ${cor}" >>${t}_cor.txt
     done
   done
@@ -241,10 +245,3 @@ plink \
 
 ## 群体间的遗传距离
 $geno_dist --bfile ${out} --out ${out}.dist.summ
-
-## debug
-code=/home/liujf/WORKSPACE/liwn/mbGS/code
-proj=/home/liujf/WORKSPACE/liwn/mbGS/data/Two/rep3
-breeds=(A B C)
-geno_gen=8-10
-maf=0.01
