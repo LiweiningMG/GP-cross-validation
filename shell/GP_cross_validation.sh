@@ -25,7 +25,7 @@
 ###################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,help \
+TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,min:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -57,6 +57,7 @@ while true; do
     --nsnp_win ) nsnp_win="$2"; shift 2 ;; ## 多品种评估以固定数目进行区间划分时，每个区间内所含的标记数 [100]
     --nqtl )     nqtl="$2";     shift 2 ;; ## 性状模拟时的QTL数目 [300]
     --nbin )     nbin="$2";     shift 2 ;; ## 多品种评估以固定数目SNP为区间划分依据时，尽可能接近这个设置的区间数 [NULL]
+    --min )      min="$2";      shift 2 ;; ## 保证挑选QTL的区间中SNP标记数的最小值 [NULL]
     --tbv_col )  tbv_col="$2";  shift 2 ;; ## 不进行校正表型计算，真实育种值在表型文件中tbv_col列 [NULL]
     --bin )      bin="$2";      shift 2 ;; ## 多品种评估时区间划分方法，fix/frq/ld/lava/cubic [fix]
     --prior )    prior="$2";    shift 2 ;; ## 多品种评估时方差组分先验文件 [NULL]
@@ -109,9 +110,9 @@ workdir=$(pwd)
 if [[ ! -d ${proj} ]]; then
   echo "${proj} not found! "
   exit 1
-elif [[ ! ${breeds} ]]; then
-  echo "parameter --breeds is reduired! "
-  exit 1
+# elif [[ ! ${breeds} ]]; then
+#   echo "parameter --breeds is reduired! "
+#   exit 1
 fi
 
 ## 日志文件夹
@@ -159,7 +160,6 @@ check_command $pheno_sim $GP_single $GP_multi $block_define $phe_adj
 method=${method:="GBLUP"}
 all_eff=${all_eff:="2 1"}
 ran_eff=${ran_eff:="1"}
-maf=${maf:="0.01"}
 seed=${seed:="8123"}
 h2s=${h2s:="0.2"}
 iter=${iter:="30000"}
@@ -188,6 +188,8 @@ geno_gen=${geno_gen:="8-10"}
 SLURM_JOB_ID=${SLURM_JOB_ID:="$RANDOM"}
 binDiv=${binDiv:="pos"}
 binThr=${binThr:="10"}
+min=${min:="${nsnp_cor}"}
+maf=${maf:=-0.01}
 
 ## 不同类型分析下的默认参数
 if [[ ${type} == "var" || ${type} == "accur" ]]; then
@@ -200,7 +202,11 @@ elif [[ ${type} == "psim" ]]; then
   rg_sim=${rg_sim:="0.2"}
   rg_dist=${rg_dist:=identical}
 elif [[ ${type} == "within" ]]; then
-  out=${out:="accur_GBLUP.txt"}
+  if [[ ${method} == "GBLUP" ]]; then
+    out=${out:="accur_GBLUP.txt"}
+  else
+    out=${out:="accur_BayesAS.txt"}
+  fi
 fi
 
 ## 从参数获取信息
@@ -266,7 +272,7 @@ if [[ ${bfile} ]]; then
       plink --bfile ${bfile} --keep-fam fid.txt --chr-set ${nchr} --freq --recode --out ${b}m &>/dev/null
     bfiles="${bfiles} ${proj}/${b}m"
   done
-  rm fid.txt
+  [[ -s fid.txt ]] && rm fid.txt
 fi
 
 ## 文件夹
@@ -278,7 +284,14 @@ logf=${logp}/${type}_${SLURM_JOB_ID}.log
 
 if [[ ${type} == "bin" ]]; then
   ## 区间划分
-  $block_define --bfile ${bfile} --minSize ${nsnp_sim} --out M_bin.txt
+  $block_define \
+    --bfile ${bfile} \
+    --win ${nsnp_win} \
+    --maf ${maf} \
+    --minSize ${nsnp_sim} \
+    --type ${bin} \
+    --out ${out} >${logp}/${bin}_block_${SLURM_JOB_ID}.log
+    [[ ! -s ${out} ]] && echo "error in bin defination! " && exit 1
 elif [[ ${type} == "adj" ]]; then
   ## 计算校正表型（ebv+re）
   for ti in "${trait_array[@]}"; do # ti=MS;pi=1
@@ -383,11 +396,12 @@ elif [[ ${type} == "psim" ]]; then
       --nsnp_cor ${nsnp_cor} \
       --dist_cor ${rg_dist} \
       --seed ${seed} \
-      --out pheno_sim.txt \
       --fid \
+      --min ${min} \
       ${binf} \
-      --qtlf qtl_info.txt &>>${logf}
-    [[ $? -ne 0 ]] && echo "phenotypes simulation error! " && exit 1
+      --qtlf qtl_info.txt \
+      --out pheno_sim.txt &>>${logf}
+    [[ ! -s pheno_sim.txt ]] && echo "phenotypes simulation error! " && exit 1
 
     ## 去除qtl
     awk '{print $2}' qtl_info.txt >qtl_snpid.txt
@@ -540,3 +554,29 @@ fi
 
 # ## 删除没有信息的日志文件
 # [[ $? -eq 0 ]] && [[ -s ${logf} ]] && rm ${logf}
+
+## debug
+type=psim
+proj=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/identical/cor0.2
+bfile=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/merge
+breeds="A B"
+code=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation
+means="1.0 0.5"
+h2s="0.5 0.3"
+rg_sim=0.2
+rg_dist=identical
+nqtl=400
+nsnp_cor=10
+nbin_cor=10
+nsnp_sim=50
+binf=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/merge_50.ld
+seed=169852
+
+type=accur
+proj=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two
+rep="1 2"
+rg_dist=identical
+rg_sim=0.2
+bin=fix=lava=cubic
+breeds="A B"
+code=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation

@@ -152,7 +152,7 @@ for (i in 1:np) {
     ## 保证两个品种的参考碱基一致(以品种A为参考)，注意这里默认只存在双等位基因
     refnow <- paste0("ref_", pop_name[i])
     frqnow <- paste0("frq_", pop_name[i])
-    
+
     not_same <- datas[[refnow]] != datas[[reffirst]]
     if (sum(not_same) > 0) {
       cat("Ensure that reference allele (", sum(not_same), ") are consistent...\n")
@@ -395,19 +395,20 @@ if (opt$binPdf == "eql") {
 
 
 ## 输出map文件
+options(scipen = 10) ## 防止输出SNP物理位置时显示科学计数法
 if (!is.null(opt$outmapf)) {
   map_out <- mrk_sel[, c("Chr", "ID", "Pos")]
   map_out$pos <- map_out$Pos * 1e6
-  
+
   ## 排序
   map_out <- map_out[order(map_out$Chr, map_out$Pos), ]
-  
+
   ## 处理位置相同的标记
   pos_dup <- duplicated(map_out[, c("Chr", "Pos")])
   if (any(pos_dup)) {
     map_out$Pos[pos_dup] <- map_out$Pos[pos_dup] + 1
   }
-  
+
   ## 输出文件
   write.table(map_out, opt$outmapf, row.names = FALSE, col.names = FALSE, quote = FALSE)
 }

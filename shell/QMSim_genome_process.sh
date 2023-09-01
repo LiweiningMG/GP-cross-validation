@@ -158,7 +158,13 @@ for j in $(seq 0 $((np - 1))); do
     --out ${breeds[${j}]}_Ind_sel_index.txt
 
   ## map文件
-  [[ ${j} != "0" ]] && cp ${breeds[0]}.map ${breeds[${j}]}.map
+  if [[ ${j} == "0" ]]; then
+    ## 将map文件中可能存在的科学计数法的位置信息转换为整数
+    awk '{printf "%s %s %s %d\n",$1,$2,$3,int($4)}' ${breeds[${j}]}.map >tmp.map
+    mv tmp.map ${breeds[${j}]}.map
+  else
+    cp ${breeds[0]}.map ${breeds[${j}]}.map
+  fi
 
   ## 基因型个体数
   ngid=$((${#gid_gen[@]} * ${litters[${j}]} * ${females[${j}]}))
@@ -182,7 +188,7 @@ done
 ## 筛选出在所有品种中均通过质控的标记位点
 awk '{print $2}' "${breeds[@]/%/q.bim}" | sort | uniq -c | awk -v n=${np} '$1==n {print $2}' >common.snp
 for b in "${breeds[@]}"; do
-  plink --file ${b} --extract common.snp --make-bed --out ${b}q
+  plink --file ${b} --extract common.snp --make-bed --out ${b}m
 done
 
 ## pca计算

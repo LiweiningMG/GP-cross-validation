@@ -214,6 +214,9 @@ breed_sim="A B"
 means="1.0 0.5"
 h2s="0.5 0.3"
 
+## 品种数
+np=$(echo $breed_sim | tr " " "\n" | wc -l)
+
 ## 基因型数据模拟
 sbatch -c40 -p XiaoYueHe --mem=100G $GP_cross \
   --type gsim \
@@ -233,7 +236,7 @@ sbatch -c40 -p XiaoYueHe --mem=100G $GP_cross \
   --geno_gen "8-10" \
   --nmloc "200000"
 
-for r in {1..10}; do # r=6;dist=uniform;cor=0.8;bin=lava
+for r in {11..15}; do # r=11;dist=identical;cor=0.2;bin=cubic
   ## 从模拟群体中筛选个体和SNP标记
   [[ ! -s ${pro}/rep${r}/merge.fam ]] && \
     $GP_cross \
@@ -244,6 +247,7 @@ for r in {1..10}; do # r=6;dist=uniform;cor=0.8;bin=lava
       --last_females "500 100" \
       --nginds "3000 600" \
       --binDiv "pos" \
+      --maf "0.01" \
       --binThr "10" \
       --geno_gen "8-10" \
       --nsnp "50000" \
@@ -252,10 +256,31 @@ for r in {1..10}; do # r=6;dist=uniform;cor=0.8;bin=lava
   ## 随机数种子
   seed=$(cat ${pro}/rep${r}/random.seed)
 
-  for dist in identical uniform; do # dist=identical;cor=0.2;bin=cubic
-    for cor in 0.2 0.5 0.8; do
+  for dist in identical; do # dist=identical;cor=0.2;bin=cubic
+    for cor in 0.2 0.5; do
       proi=${pro}/rep${r}/${dist}/cor${cor}
-      mkdir -p ${proi}
+      mkdir -m 777 -p ${proi}
+
+      ## 生成区间文件
+      [[ ! -s ${pro}/rep${r}/cubic_M_50_psim.txt ]] && \
+      $GP_cross \
+        --type bin \
+        --proj ${proi} \
+        --bfile ${pro}/rep${r}/merge \
+        --bin "cubic" \
+        --nsnp_win "50" \
+        --nsnp_sim "100" \
+        --out "${pro}/rep${r}/cubic_M_50_psim.txt"
+
+      # ## 计算LD，用于确定表型模拟时QTL挑选
+      # [[ ! -s ${pro}/rep${r}/merge_50.ld ]] && \
+      #   plink \
+      #     --bfile ${pro}/rep${r}/merge \
+      #     --r2 \
+      #     --ld-window 26 \
+      #     --ld-window-kb 10000 \
+      #     --ld-window-r2 0 \
+      #     --out ${pro}/rep${r}/merge_50
 
       ## 生成模拟表型
       # sbatch -c1 --mem=10G \
@@ -272,9 +297,10 @@ for r in {1..10}; do # r=6;dist=uniform;cor=0.8;bin=lava
         --nqtl "400" \
         --nsnp_cor "10" \
         --nbin_cor "10" \
-        --nsnp_sim "50" \
+        --min "110" \
+        --binf ${pro}/rep${r}/cubic_M_50_psim.txt \
         --seed ${seed}
-      sleep 10
+      # sleep 10
 
       ## 计算品种内评估准确性GBLUP
       for b in ${breed_sim}; do
@@ -288,15 +314,15 @@ for r in {1..10}; do # r=6;dist=uniform;cor=0.8;bin=lava
             --phef ${proi}/pheno_sim.txt \
             --code ${code} \
             --thread 26 \
-            --debug \
             --tbv_col 6 \
             --seed ${seed} \
             --rep 5 \
             --fold 5
+        sleep 5
       done
 
-      ## 等待品种内评估执行完毕
-      while [[ ! -f "${proi}/${breed_sim##* }/val5/rep5/pheno.txt" ]]; do
+      ## 等待品种内验证群划分完毕
+      while [[ $(find ${proi}/*/val5/rep5/pheno.txt 2>/dev/null | wc -l) -lt ${np} ]]; do
         sleep 3
       done
 
@@ -314,7 +340,7 @@ for r in {1..10}; do # r=6;dist=uniform;cor=0.8;bin=lava
           --thread 26 \
           --seed ${seed} \
           --tbv_col 6
-        sleep 20
+        sleep 10
       done
 
       ## 计算多品种多性状Bayes评估准确性
@@ -329,7 +355,6 @@ for r in {1..10}; do # r=6;dist=uniform;cor=0.8;bin=lava
           --thread 26 \
           --code ${code} \
           --seed ${seed} \
-          --debug \
           --suffix \
           --tbv_col 6 \
           --bin ${bin}
@@ -337,9 +362,10 @@ for r in {1..10}; do # r=6;dist=uniform;cor=0.8;bin=lava
       done
 
       ## 计算品种内评估准确性BayesAS
-      binf=${proi}/multi_${breed_sim// /_}/fix_100.txt
+      binf=${proi}/multi_${breed_sim// /_}/cubic_M_50.txt
       [[ ! -f ${binf} ]] && continue
       for b in ${breed_sim}; do
+        [[ -s "${proi}/${b}/accur_BayesAS.txt" ]] && continue
         sbatch -c25 -p XiaoYueHe --mem=100G $GP_cross \
           --type within \
           --proj ${proi} \
@@ -361,13 +387,13 @@ for r in {1..10}; do # r=6;dist=uniform;cor=0.8;bin=lava
 done
 
 ## 统计准确性结果
-for type in accur var; do # type=accur
+for type in accur var; do # type=accur $(seq -s " " 1 10)
   $GP_cross \
     --type ${type} \
     --proj ${pro} \
     --rep "$(seq -s " " 1 10)" \
-    --rg_dist "identical uniform" \
-    --rg_sim "0.2 0.5 0.8" \
+    --rg_dist "identical" \
+    --rg_sim "0.2 0.5" \
     --bin "fix lava cubic" \
     --breeds "${breed_sim}" \
     --code ${code}
@@ -413,6 +439,7 @@ for r in {1..10}; do # r=6;dist=identical;cor=0.5;bin=cubic
       --last_females "100 100 100" \
       --nginds "600 600 600" \
       --binDiv "pos" \
+      --maf "0.01" \
       --binThr "10" \
       --geno_gen "8-10" \
       --nsnp "50000" \
@@ -545,4 +572,16 @@ for type in accur var; do # type=accur
     --bin "fix lava cubic" \
     --breeds "${breed_sim}" \
     --code ${code}
+done
+
+pro=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two
+for r in {1..10}; do
+  for c in 0.2 0.5; do
+    for t in identical uniform; do
+      path=${pro}/rep${r}/${t}/cor${c}
+      [[ -d ${path} ]] && rm -r ${path}
+      # path=${pro}/rep${r}/${t}/cor${c}
+      # [[ -d ${path} ]] && mv ${path} ${path}s
+    done
+  done
 done

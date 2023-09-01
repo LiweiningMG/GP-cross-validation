@@ -9,7 +9,9 @@ spec <- matrix(
     "h2",       "1", 1, "character", "[Optional] heritability of populations [0.5]",
     "rg",       "r", 1, "character", "[Optional] genetic correlation between breeds [0.2]",
     "win",      "w", 1, "integer",   "[Optional] number of snp in each bins [100]",
-    "bin",      "b", 1, "character", "[Optional] ld block file path / win / chr [win]",
+    "min",      "M", 1, "integer",   "[Optional] minimum SNPs in the bins where rg exist [nsnp_cor]",
+    "bin",      "b", 1, "character", "[Optional] win / chr [win]",
+    "binf",     "B", 1, "character", "[Optional] ld block file path [NULL]",
     "binc",     "C", 1, "integer",   "[Optional] column number of nSNP in block file [5]",
     "miss",     "m", 1, "character", "[Optional] miss value in phenotype [-99]",
     "dist_cor", "c", 1, "character", "[Optional] distribution of genetic correlation of qtl [identical/uniform]",
@@ -49,12 +51,60 @@ argp_parse <- function(char, num, sep = " ", label = "parameters") {
   }
 }
 
+find_local_extreme <- function(x, diff = 0.2, type = "min") { # nolint
+  ## 寻找极值点
+  n <- length(x)
+  peaks <- which(diff(sign(diff(x))) < 0) + 1
+  valleys <- which(diff(sign(diff(x))) > 0) + 1
+
+  ## 加上端点
+  if (x[1] > x[2]) {
+    peaks <- c(1, peaks)
+  } else if (x[1] > x[2]) {
+    valleys <- c(1, valleys)
+  }
+  if (x[n] < x[n - 1]) {
+    valleys <- c(valleys, n)
+  } else if (x[n] > x[n - 1]) {
+    peaks <- c(peaks, n)
+  }
+
+  final <- c()
+  for (i in valleys) {
+    left_peak <- TRUE
+    if (any(peaks < i)) {
+      left_peak <- max(peaks[peaks < i])
+      diff_rate <- abs(x[i] - x[left_peak]) / x[i]
+      if (diff_rate < diff) left_peak <- FALSE
+    }
+
+    right_peak <- TRUE
+    if (any(peaks > i)) {
+      right_peak <- min(peaks[peaks > i])
+      diff_rate <- abs(x[i] - x[right_peak]) / x[i]
+      if (diff_rate < diff) right_peak <- FALSE
+    }
+
+    if (type == "min" && left_peak && right_peak) {
+      final <- c(final, i)
+    } else if (type == "max" && (left_peak || right_peak)) {
+      final <- c(final, i)
+    }
+  }
+
+  ## 端点处不要
+  final <- final[final != 1 & final != n]
+
+  return(final)
+}
+
 ## 加载需要的程序包（未安装的话请提前安装）
 cat("Loading required packages... \n")
 suppressPackageStartupMessages(library("data.table"))
 suppressPackageStartupMessages(library("MASS"))
 suppressPackageStartupMessages(library("Matrix"))
 suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("tidyr"))
 
 ## 默认参数
 if (is.null(opt$seed)) opt$seed <- Sys.time()
@@ -64,11 +114,13 @@ if (is.null(opt$rg)) opt$rg <- "0.2"
 if (is.null(opt$nbin_cor)) opt$nbin_cor <- 0.05 ## 大于1为具体存在相关的区间数，小于1为相关的区间占总区间的比例
 if (is.null(opt$nqtl)) opt$nqtl <- 0.005 ## QTL数占总SNP数的比例
 if (is.null(opt$nsnp_cor)) opt$nsnp_cor <- 10
+if (is.null(opt$min)) opt$min <- opt$nsnp_cor
 if (is.null(opt$dist_cor)) opt$dist_cor <- "identical"
 if (is.null(opt$mean)) opt$mean <- "1.0"
 if (is.null(opt$bin)) opt$bin <- "win"
 if (is.null(opt$binc)) opt$binc <- 5
 if (is.null(opt$win)) opt$win <- 100
+if (!is.null(opt$binf)) opt$bin <- opt$binf
 
 ## 随机数种子
 set.seed(as.integer(opt$seed))
@@ -128,10 +180,10 @@ if (length(unique(nsnps)) > 1) {
 
 ## 生成snp所属区间
 map <- maps[[1]]
+chrs <- unique(map$CHR)
 if (opt$bin == "win") {
   ## 根据提供win进行区间划分，即每个区间的SNP数为win
   bin <- nsnp_bin <- NULL
-  chrs <- unique(map$CHR)
   for (i in seq_along(chrs)) {
     nsnp_i <- sum(map$CHR == chrs[i])  ## 染色体i上的SNP数
     win_num <- floor(nsnp_i / opt$win) ## 染色体i可划分的区间数
@@ -149,19 +201,77 @@ if (opt$bin == "win") {
 } else if (file.exists(opt$bin)) {
   ## 根据提供的区间划分文件，在每个区间中选取QTL
   bin <- fread(paste0(opt$bin))
-  names(bin)[opt$binc] <- "nsnp"
+  plink_ld_name <- c("CHR_A", "BP_A", "SNP_A", "CHR_B", "BP_B", "SNP_B", "R2")
+  if (all(names(bin) %in% plink_ld_name)) {
+    ## 根据局部LD情况确定SNP所属区间
+    cat("calculating mean LD in windows...\n")
+    map$index <- FALSE
+    for (chr in chrs) {
+      snps <- map$SNP[map$CHR == chr]
+      ldi <- bin[bin$CHR_A == chr]
+      mapi <- map[map$CHR == chr, ]
+      for (j in seq_along(snps)) {
+        index <- (max(j - opt$win, 1)):(min(j + opt$win, length(snps)))
+        mapi$R2[j] <- mean(unlist(subset(ldi, SNP_A %in% snps[index] & SNP_B %in% snps[index], select = "R2")))
+      }
+      max <- find_local_extreme(mapi$R2, type = "max")
+      map$index[map$CHR == chr & map$SNP %in% mapi$SNP[max]] <- TRUE
+    }
+
+    ## 计算每个SNP与上下游SNP的LD均值
+    # ld_mean <- bin %>%
+    #   group_by(SNP_A) %>%
+    #   summarize(CHR = unique(CHR_A), R2 = mean(R2, na.rm = TRUE))
+    # ld_mean2 <- bin %>%
+    #   group_by(SNP_B) %>%
+    #   summarize(R2 = mean(R2, na.rm = TRUE))
+    # ld_mean_2 <- left_join(ld_mean, ld_mean2, by = c("SNP_A" = "SNP_B"))
+    # ld_mean_m <- ld_mean_2 %>%
+    #   rowwise() %>%
+    #   mutate(mean_R2 = mean(c(R2.x, R2.y), na.rm = TRUE)) %>%
+    #   select(CHR, SNP_A, mean_R2)
+    # names(ld_mean_m) <- c("CHR", "SNP", "R2")
+    # map <- left_join(map, ld_mean_m, by = c("CHR", "SNP"))
+    # ## 填充缺失值
+    # map <- map %>%
+    #   fill(R2, .direction = "down")
+    # map$index <- FALSE
+    # for (i in unique(map$CHR)) {
+    #   mapi <- map[map$CHR == i, ]
+    #   mapi$R2s <- smooth.spline(mapi$R2, spar = 0.20)$y
+    #   max <- find_local_extreme(mapi$R2s, type = "max")
+    #   map$index[map$CHR == i & map$SNP %in% mapi$SNP[max]] <- TRUE
+    #   # max <- find_local_extreme(mapi$R2s, type = "min")
+    #   # map$index[map$CHR == i & map$SNP %in% mapi$SNP[max]] <- 2
+    # }
+    index <- unlist(sapply(which(map$index), function(x) (x - opt$win + 1):(x + opt$win + 1)))
+    index <- index[index > 0 & index <= nrow(map)]
+    map$index <- FALSE
+    map$index[index] <- TRUE
+
+    map$index <- c(FALSE, map$index[-length(map)])
+    map$bin <- cumsum(!map$index)
+  } else {
+    names(bin)[opt$binc] <- "nsnp"
+    bin_nsnp_above <- which(bin$nsnp > opt$min)
+  }
 } else {
   cat("wrong parameter for bin:", opt$bin, "\n")
   quit()
 }
 
 ## 指明每个SNP所属的区间
-cat("number of regions: ", nrow(bin), "\n")
-map$bin <- rep(seq_len(nrow(bin)), times = bin$nsnp)
+if ("bin" %in% names(map)) {
+  cat("number of regions: ", max(map$bin), "\n")
+} else {
+  cat("number of regions: ", nrow(bin), "\n")
+  map$bin <- rep(seq_len(nrow(bin)), times = bin$nsnp)
+}
 
 ### 挑选QTL ###
 ## 每个区间挑选一个标记位点
 qmap <- map %>%
+  subset(!is.na(bin)) %>%
   group_by(bin) %>%
   slice_sample()
 
@@ -173,14 +283,25 @@ if (opt$nbin_cor > 0) {
     opt$nbin_cor <- floor(opt$nbin_cor * nrow(bin))
     cat("The number of bins with non-zero correaltion is:", opt$nbin_cor, "\n")
   }
-  bins_sel <- sample(qmap$bin, opt$nbin_cor)
+
+  ## snp数符合要求的区间
+  if (!exists("bin_nsnp_above")) {
+    bin_nsnp_above <- map$bin[duplicated(map$bin)]
+  }
+
+  ## 可供挑选存在遗传相关的QTL的区间
+  bin_snps <- unique(map$bin[map$bin %in% bin_nsnp_above])
+
+  ## 抽取nbin_cor个区间，这些区间内的QTL在品种间存在关联
+  bins_sel <- sample(qmap$bin[qmap$bin %in% bin_snps], opt$nbin_cor)
 
   ## 为保证区间内相关，再挑选nsnp_cor-1个标记位点
   if (opt$nsnp_cor > 1) {
     qmap2 <- subset(map, bin %in% bins_sel & !SNP %in% qmap$SNP) %>%
+      subset(!is.na(bin)) %>%
       group_by(bin) %>%
       slice_sample(n = opt$nsnp_cor - 1)
-    qmap <- bind_rows(qmap, qmap2)    
+    qmap <- bind_rows(qmap, qmap2)
   }
 }
 
@@ -201,6 +322,7 @@ if (over > 0) {
   over <- abs(over)
   add_each_bin <- ceiling(over / nrow(bin))
   qmap3 <- subset(map, !SNP %in% qmap$SNP) %>%
+    subset(!is.na(bin)) %>%
     group_by(bin) %>%
     slice_sample(n = add_each_bin)
   qmap <- bind_rows(qmap, qmap3)
@@ -412,3 +534,15 @@ if (is.null(opt$overlap) && !is.null(opt$bin)) {
   write.table(bin$nsnp, newbinf, row.names = FALSE, quote = FALSE, col.names = FALSE)
   cat("new bins file output to:", newbinf, "\n")
 }
+
+## debug
+setwd("/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep3/identical/cor0.2")
+opt <- list()
+opt$gt <- "Am Bm"
+opt$binf <- "/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/identical/cor0.2/cubic_M_50_psim.txt"
+opt$nqtl <- 400
+opt$nbin_cor <- 10
+opt$nsnp_cor <- 10
+opt$min <- 100
+opt$seed <- 1686233
+opt$win <- 50
