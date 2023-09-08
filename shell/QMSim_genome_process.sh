@@ -35,7 +35,7 @@ while true; do
     --geno_sel ) geno_sel="$2"; shift 2 ;; ## 从哪几个世代中挑选基因型个体 [geno_gen]
     --binDiv )   binDiv="$2";   shift 2 ;; ## 抽样SNP时区间划分的依据，pos/frq [pos]
     --binThr )   binThr="$2";   shift 2 ;; ## 抽样SNP时区间划分长度，物理位置cM或基因频率步长 [10]
-    --maf )      maf="$2";      shift 2 ;; ## 抽样SNP时允许的最小等位基因频率 [10]
+    --maf )      maf="$2";      shift 2 ;; ## 抽样SNP时允许的最小等位基因频率 [0.01]
     --nginds )   nginds="$2";   shift 2 ;; ## 每个品种选择的基因型个体数 ["600 600 ..."]
     --nchr )     nchr="$2" ;    shift 2 ;;  ## 染色体数目 [30]
     --last_litters )  litters="$2";  shift 2 ;; ## 各品种在LD稳定阶段的每窝个体数 ["10 10 ..."]
@@ -124,7 +124,7 @@ mapfile -t gid_gen < <(seq ${geno_gen:0:1} ${geno_gen:2:3})
 ## 工作路径
 cd ${proj} || exit
 
-## 从QMSim中获取第一个随机数为后面随机过程的种子
+## 从QMSim中获取第一个随机数的前6位为后面随机过程的种子
 seed=$(sed -n '2p' seed | awk '{print $2}')
 seed=${seed:0:6}
 echo ${seed} >random.seed
@@ -188,7 +188,7 @@ done
 ## 筛选出在所有品种中均通过质控的标记位点
 awk '{print $2}' "${breeds[@]/%/q.bim}" | sort | uniq -c | awk -v n=${np} '$1==n {print $2}' >common.snp
 for b in "${breeds[@]}"; do
-  plink --file ${b} --extract common.snp --make-bed --out ${b}m
+  plink --bfile ${b}q --extract common.snp --make-bed --out ${b}m
 done
 
 ## pca计算
@@ -240,10 +240,10 @@ done
 : >plink_merge_list.txt
 for b in "${breeds[@]}"; do
   [[ ${b} == "${breeds[0]}" ]] && continue
-  echo "${b}q" >>plink_merge_list.txt
+  echo "${b}m" >>plink_merge_list.txt
 done
 plink \
-  --bfile ${breeds[0]}q \
+  --bfile ${breeds[0]}m \
   --merge-list plink_merge_list.txt \
   --maf 0.05 \
   --make-bed \
@@ -251,3 +251,4 @@ plink \
 
 ## 群体间的遗传距离
 $geno_dist --bfile ${out} --out ${out}.dist.summ
+
