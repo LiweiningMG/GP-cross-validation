@@ -1,11 +1,11 @@
 #!/usr/bin/bash
 #SBATCH --job-name=GP_CV
-#SBATCH --output=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation/log/GP_cross_%j.log
+#SBATCH --output=/public/home/liujf/liwn/code/GitHub/GP-cross-validation/log/GP_cross_%j.log
 
 ########################################################################################################################
 ## 版本: 1.1.1
 ## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-07-05
+## 日期: 2023-09-09
 ## 
 ## 功能：
 ## 1.根据提供的plink格式的基因型文件进行表型模拟
@@ -209,6 +209,7 @@ elif [[ ${type} == "within" ]]; then
   fi
 fi
 
+
 ## 从参数获取信息
 read -ra breeds_array <<<"$breeds"
 read -ra traits_array <<<"$traits"
@@ -231,15 +232,15 @@ ntrait=${#trait_array[@]}
 [[ ${prior} ]] && prior=" --priorVar ${prior} "
 # [[ ${bin} ]] && bin=" --bin ${bin} "
 ## 由品种数确定的默认参数
-nginds=${nginds:=$(printf "%${np}s" | sed "s/ /600 /g" | sed 's/ *$//')}
-last_litters=${last_litters:=$(printf "%${np}s" | sed "s/ /10 /g" | sed 's/ *$//')}
-last_females=${last_females:=$(printf "%${np}s" | sed "s/ /200 /g" | sed 's/ *$//')}
-founder_sel=${founder_sel:=$(printf "%${np}s" | sed "s/ /rnd,/g" | sed 's/,$//')}
+nginds=${nginds:=$(printf "%${nbreed}s" | sed "s/ /600 /g" | sed 's/ *$//')}
+last_litters=${last_litters:=$(printf "%${nbreed}s" | sed "s/ /10 /g" | sed 's/ *$//')}
+last_females=${last_females:=$(printf "%${nbreed}s" | sed "s/ /200 /g" | sed 's/ *$//')}
+founder_sel=${founder_sel:=$(printf "%${nbreed}s" | sed "s/ /rnd,/g" | sed 's/,$//')}
 seg_sel=${seg_sel:=${founder_sel}}
 last_sel=${last_sel:=${founder_sel}}
-extentLDs=${extentLDs:=$(printf "%${np}s" | sed "s/ /10 /g" | sed 's/ *$//')}
-last_males=${last_males:=$(printf "%${np}s" | sed "s/ /40 /g" | sed 's/ *$//')}
-seg_gens=${seg_gens:=$(printf "%${np}s" | sed "s/ /40 /g" | sed 's/ *$//')}
+extentLDs=${extentLDs:=$(printf "%${nbreed}s" | sed "s/ /10 /g" | sed 's/ *$//')}
+last_males=${last_males:=$(printf "%${nbreed}s" | sed "s/ /40 /g" | sed 's/ *$//')}
+seg_gens=${seg_gens:=$(printf "%${nbreed}s" | sed "s/ /40 /g" | sed 's/ *$//')}
 
 ## 模拟表型时，性状数为1，无性状名
 if [[ ${ntrait} == "0" ]]; then
@@ -408,7 +409,7 @@ elif [[ ${type} == "psim" ]]; then
   fi
 elif [[ ${type} == "within" ]]; then
   ## 群体内评估
-  for ti in "${trait_array[@]}"; do # ti=MS;pi=1
+  for ti in "${trait_array[@]}"; do # ti=/;pi=1
     ## 获取要评估性状在所有性状中的位置索引
     pi=$(echo "${traits}" | tr ' ' '\n' | grep -n -w -m1 "${ti}" | cut -d':' -f1)
     phedir=${proj}/${ti}
@@ -426,8 +427,9 @@ elif [[ ${type} == "within" ]]; then
 
       ## 工作文件夹
       mkdir -p ${phedir}/${b}
-      cd ${phedir}/${b} || exit
+      cd ${phedir}/${b} || exit 5
 
+      ## 基因型文件
       if [[ -s ${phedir}/qtl_snpid.txt ]]; then
         ## 在基因型文件中去除qtl
         plink \
@@ -554,29 +556,3 @@ fi
 
 # ## 删除没有信息的日志文件
 # [[ $? -eq 0 ]] && [[ -s ${logf} ]] && rm ${logf}
-
-## debug
-type=psim
-proj=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/identical/cor0.2
-bfile=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/merge
-breeds="A B"
-code=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation
-means="1.0 0.5"
-h2s="0.5 0.3"
-rg_sim=0.2
-rg_dist=identical
-nqtl=400
-nsnp_cor=10
-nbin_cor=10
-nsnp_sim=50
-binf=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/merge_50.ld
-seed=169852
-
-type=accur
-proj=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two
-rep="1 2"
-rg_dist=identical
-rg_sim=0.2
-bin=fix=lava=cubic
-breeds="A B"
-code=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation
