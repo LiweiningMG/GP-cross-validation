@@ -398,9 +398,6 @@ fi
 ############################################################
 for r in $(seq 1 ${rep}); do # r=1;f=1
   for f in $(seq 1 ${fold}); do
-    ## 参数卡
-    cp ${workdir}/${DIR}.DIR ${workdir}/val${f}/rep${r}/${DIR}.DIR
-
     ## 替换缺失值
     sed -i "s/NA/${miss}/Ig" ${workdir}/val${f}/rep${r}/pheno.txt
     check_alphabet ${workdir}/val${f}/rep${r}/pheno.txt
@@ -427,6 +424,7 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
       ## 固定效应
       fix_eff=${all_eff%" ${ran_eff}"}
 
+      ## 运行Bayes模型
       job_pool_run mbBayesAS \
         --bfile ${bfile} \
         --phef ${workdir}/val${f}/rep${r}/pheno.txt \
@@ -447,6 +445,10 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
     fi
 
     if [[ ${method}  =~ "BLUP" ]]; then
+      ## 参数卡
+      cp ${workdir}/${DIR}.DIR ${workdir}/val${f}/rep${r}/${DIR}.DIR
+
+      ## 运行BLUP模型
       if [[ ${dmu4} ]]; then
         [[ ! ${debug} ]] && job_pool_run run_dmu4 ${DIR} ${workdir}/val${f}/rep${r}
       else
@@ -456,7 +458,7 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
   done
 done
 
-## 等待后台结束
+## 等待后台进程结束
 job_pool_wait
 ## 释放线程
 job_pool_shutdown
@@ -494,6 +496,6 @@ $accur_cal \
 ###################  删除中间文件  #####################
 ########################################################
 ## 参数卡
-rm ${workdir}/${DIR}.DIR
+[[ -s ${workdir}/${DIR}.DIR ]] && rm ${workdir}/${DIR}.DIR
 
 [[ $? -ne 0 ]] && echo "Accuracy calculation completed, file output to: ${out}"
