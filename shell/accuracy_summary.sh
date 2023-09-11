@@ -120,48 +120,49 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
 
           ## 群体合并单性状
           accf=$(find ${path} -path "*/blen*/*" -name "accur_GBLUP*${b}*txt" 2>/dev/null)
-          [[ ! ${accf} ]] && continue
-
-          # accf=${path}/blend/accur_GBLUP_${b}.txt
-          for f in ${accf}; do # f=${accf[0]}
-            if [[ -s ${f} ]]; then
-              ## 文件夹名
-              type=$(dirname ${f})
-              type=$(basename ${type})
-              type=${type/blend_/}
-              {
-                awk '{print "'${r}'","'${d}'","'${c}'","b-GBLUP","'${type}'","'${b}'","'${t}'",$0}' ${f}
-                [[ -s ${wf} ]] && \
-                  awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
-                [[ -s ${bf} ]] && \
-                  awk '{print "'${r}'","'${d}'","'${c}'","w-BayesAS","'${type}'","'${b}'","'${t}'", $0}' ${bf}
-              } >>${out}
-            # else
-              # echo "${accf} not found! "
-            fi
-          done
+          if [[ ! ${accf} ]]; then
+            # accf=${path}/blend/accur_GBLUP_${b}.txt
+            for f in ${accf}; do # f=${accf[0]}
+              if [[ -s ${f} ]]; then
+                ## 文件夹名
+                type=$(dirname ${f})
+                type=$(basename ${type})
+                type=${type/blend_/}
+                {
+                  awk '{print "'${r}'","'${d}'","'${c}'","b-GBLUP","'${type}'","'${b}'","'${t}'",$0}' ${f}
+                  [[ -s ${wf} ]] && \
+                    awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
+                  [[ -s ${bf} ]] && \
+                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesAS","'${type}'","'${b}'","'${t}'", $0}' ${bf}
+                } >>${out}
+              # else
+                # echo "${accf} not found! "
+              fi
+            done
+          fi
 
           ## 群体合并多性状GBLUP
           accf=$(find ${path} -path "*/unio*/*" -name "accur_GBLUP*${b}*txt" 2>/dev/null)
           # accf=$(find ${path}/unio* -name "accur_*${b}*txt" 2>/dev/null)
-          [[ ! ${accf} ]] && continue
-          for f in ${accf}; do # f=${accf[0]}
-            if [[ -s ${f} ]]; then
-              ## 文件夹名
-              type=$(dirname ${f})
-              type=$(basename ${type})
-              type=${type/union_/}
-              {
-                awk '{print "'${r}'","'${d}'","'${c}'","u-GBLUP","'${type}'","'${b}'","'${t}'",$0}' ${f}
-                [[ -s ${wf} ]] && \
-                  awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
-                [[ -s ${bf} ]] && \
-                  awk '{print "'${r}'","'${d}'","'${c}'","w-BayesAS","'${type}'","'${b}'","'${t}'", $0}' ${bf}
-              } >>${out}
-            # else
-            #   echo "${accf} not found! "
-            fi
-          done
+          if [[ ! ${accf} ]]; then
+            for f in ${accf}; do # f=${accf[0]}
+              if [[ -s ${f} ]]; then
+                ## 文件夹名
+                type=$(dirname ${f})
+                type=$(basename ${type})
+                type=${type/union_/}
+                {
+                  awk '{print "'${r}'","'${d}'","'${c}'","u-GBLUP","'${type}'","'${b}'","'${t}'",$0}' ${f}
+                  [[ -s ${wf} ]] && \
+                    awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
+                  [[ -s ${bf} ]] && \
+                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesAS","'${type}'","'${b}'","'${t}'", $0}' ${bf}
+                } >>${out}
+              # else
+              #   echo "${accf} not found! "
+              fi
+            done
+          fi
 
           ## MT-bayesAS
           for bin in "${bins_array[@]}"; do
