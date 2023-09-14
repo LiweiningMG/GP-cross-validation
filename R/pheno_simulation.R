@@ -12,7 +12,7 @@ spec <- matrix(
     "min",      "M", 1, "integer",   "[Optional] minimum SNPs in the bins where rg exist [nsnp_cor]",
     "bin",      "b", 1, "character", "[Optional] win / chr [win]",
     "binf",     "B", 1, "character", "[Optional] ld block file path [NULL]",
-    "binc",     "C", 1, "integer",   "[Optional] column number of nSNP in block file [5]",
+    "binc",     "C", 1, "integer",   "[Optional] column number of nSNP in block file [last col]",
     "miss",     "m", 1, "character", "[Optional] miss value in phenotype [-99]",
     "dist_cor", "c", 1, "character", "[Optional] distribution of genetic correlation of qtl [identical/uniform]",
     "nbin_cor", "q", 1, "integer",   "[Optional] [0.05]",
@@ -118,7 +118,6 @@ if (is.null(opt$min)) opt$min <- opt$nsnp_cor
 if (is.null(opt$dist_cor)) opt$dist_cor <- "identical"
 if (is.null(opt$mean)) opt$mean <- "1.0"
 if (is.null(opt$bin)) opt$bin <- "win"
-if (is.null(opt$binc)) opt$binc <- 5
 if (is.null(opt$win)) opt$win <- 100
 if (!is.null(opt$binf)) opt$bin <- opt$binf
 
@@ -252,6 +251,7 @@ if (opt$bin == "win") {
     map$index <- c(FALSE, map$index[-length(map)])
     map$bin <- cumsum(!map$index)
   } else {
+    if (is.null(opt$binc)) opt$binc <- ncol(bin)
     names(bin)[opt$binc] <- "nsnp"
     bin_nsnp_above <- which(bin$nsnp > opt$min)
   }
@@ -291,6 +291,13 @@ if (opt$nbin_cor > 0) {
 
   ## 可供挑选存在遗传相关的QTL的区间
   bin_snps <- unique(map$bin[map$bin %in% bin_nsnp_above])
+
+  ## 检测区间数是否够抽样所需
+  if (length(bin_snps) < opt$nbin_cor) {
+    cat("The number of candidate intervals cannot meet the sampling requirements\n")
+    cat(length(bin_snps), "/", opt$nbin_cor, "\n")
+    quit()
+  }
 
   ## 抽取nbin_cor个区间，这些区间内的QTL在品种间存在关联
   bins_sel <- sample(qmap$bin[qmap$bin %in% bin_snps], opt$nbin_cor)
@@ -534,15 +541,3 @@ if (is.null(opt$overlap) && !is.null(opt$bin)) {
   write.table(bin$nsnp, newbinf, row.names = FALSE, quote = FALSE, col.names = FALSE)
   cat("new bins file output to:", newbinf, "\n")
 }
-
-## debug
-setwd("/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep3/identical/cor0.2")
-opt <- list()
-opt$gt <- "Am Bm"
-opt$binf <- "/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/identical/cor0.2/cubic_M_50_psim.txt"
-opt$nqtl <- 400
-opt$nbin_cor <- 10
-opt$nsnp_cor <- 10
-opt$min <- 100
-opt$seed <- 1686233
-opt$win <- 50
