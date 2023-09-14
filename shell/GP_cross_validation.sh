@@ -25,7 +25,7 @@
 ###################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,min:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,help \
+TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,min:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,overlap,debug,suffix,dense,noCov,append,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -94,6 +94,7 @@ while true; do
     --rg_local )     rg_local=true;     shift   ;; ## 每个基因组分区的协方差不同，为局部ld、frq相关系数
     --all_comb )     all_comb=true;     shift   ;; ## breeds中所有可能的品种组合都进行评估
     --noCov )        noCov=true;        shift   ;; ## 性状间的残差效应约束为0
+    --overlap )      overlap=true;      shift   ;; ## SNP标记中包含QTL
     --suffix )       suffix=true;       shift   ;; ## 在union/blend/multi等文件夹后添加品种名称后缀，如blend_YY_LL
     --append )       append=true;       shift   ;; ## 计算校正表型时，把各个群体的校正表型进行合并
     --debug )        debug=true;        shift   ;; ## 不跑DMU、gmatrix、bayes等时间长的步骤
@@ -217,6 +218,7 @@ read -ra trait_array <<<"$trait"
 read -ra sim_dirs <<<"$sim_dir"
 nbreed=${#breeds_array[@]}
 ntrait=${#trait_array[@]}
+[[ ${overlap} ]] && overlap=" --overlap "
 [[ ${dense} ]] && dense=" --dense "
 [[ ${debug} ]] && debug=" --debug "
 [[ ${suffix} ]] && suffix=" --suffix "
@@ -399,6 +401,7 @@ elif [[ ${type} == "psim" ]]; then
       --seed ${seed} \
       --fid \
       --min ${min} \
+      ${overlap} \
       ${binf} \
       --qtlf qtl_info.txt \
       --out pheno_sim.txt &>>${logf}
