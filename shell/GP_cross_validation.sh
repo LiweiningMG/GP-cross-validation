@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #SBATCH --job-name=GP_CV
-#SBATCH --output=/public/home/liujf/liwn/code/GitHub/GP-cross-validation/log/GP_cross_%j.log
+#SBATCH --output=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation/log/GP_cross_%j.log
 
 ########################################################################################################################
 ## 版本: 1.1.1
@@ -25,7 +25,7 @@
 ###################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
-TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,min:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,help \
+TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,min:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,overlap,evenly,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -95,6 +95,8 @@ while true; do
     --all_comb )     all_comb=true;     shift   ;; ## breeds中所有可能的品种组合都进行评估
     --noCov )        noCov=true;        shift   ;; ## 性状间的残差效应约束为0
     --suffix )       suffix=true;       shift   ;; ## 在union/blend/multi等文件夹后添加品种名称后缀，如blend_YY_LL
+    --evenly )       evenly=true;       shift   ;; ## 在一个区间内挑选SNP作为存在遗传相关的QTL时，使SNP在区间中均匀分布
+    --overlap )      overlap=true;      shift   ;; ## QTL保留在分析的SNP集中
     --append )       append=true;       shift   ;; ## 计算校正表型时，把各个群体的校正表型进行合并
     --debug )        debug=true;        shift   ;; ## 不跑DMU、gmatrix、bayes等时间长的步骤
   -h | --help)    grep ";; ##" $0 | grep -v help && exit 1 ;;
@@ -108,7 +110,7 @@ workdir=$(pwd)
 
 ## 检查必要参数是否提供
 if [[ ! -d ${proj} ]]; then
-  echo "${proj} not found! "
+  echo "path ${proj} not found! "
   exit 1
 # elif [[ ! ${breeds} ]]; then
 #   echo "parameter --breeds is reduired! "
@@ -217,6 +219,8 @@ read -ra trait_array <<<"$trait"
 read -ra sim_dirs <<<"$sim_dir"
 nbreed=${#breeds_array[@]}
 ntrait=${#trait_array[@]}
+[[ ${overlap} ]] && overlap=" --overlap "
+[[ ${evenly} ]] && evenly=" --evenly "
 [[ ${dense} ]] && dense=" --dense "
 [[ ${debug} ]] && debug=" --debug "
 [[ ${suffix} ]] && suffix=" --suffix "
@@ -399,13 +403,19 @@ elif [[ ${type} == "psim" ]]; then
       --seed ${seed} \
       --fid \
       --min ${min} \
+      ${overlap} \
+      ${evenly} \
       ${binf} \
       --qtlf qtl_info.txt \
       --out pheno_sim.txt &>>${logf}
     [[ ! -s pheno_sim.txt ]] && echo "phenotypes simulation error! " && exit 1
 
     ## 去除qtl
-    awk '{print $2}' qtl_info.txt >qtl_snpid.txt
+    if [[ ! ${overlap} ]]; then
+      awk '{print $2}' qtl_info.txt >qtl_snpid.txt
+    else 
+      [[ -s qtl_snpid.txt ]] && rm qtl_snpid.txt
+    fi
   fi
 elif [[ ${type} == "within" ]]; then
   ## 群体内评估
@@ -437,13 +447,15 @@ elif [[ ${type} == "within" ]]; then
           --exclude ${phedir}/qtl_snpid.txt \
           --make-bed \
           --out ${phedir}/${b}mq &>>${logf}
-
-        ## 提取品种b的表型
-        grep "${b}" ../pheno_sim.txt | awk '{print $2="", $0}' | awk '$2="1"' >${b}_dmu_pheno.txt
         bfile=${phedir}/${b}mq
-        phef=${b}_dmu_pheno.txt
       else
         bfile=${proj}/${b}m
+      fi
+
+      ## 表型文件
+      if [[ -s ${phedir}/pheno_sim.txt ]]; then
+        grep "${b}" ../pheno_sim.txt | awk '{print $2="", $0}' | awk '$2="1"' >${b}_dmu_pheno.txt
+        phef=${b}_dmu_pheno.txt
       fi
 
       ## dmu计算准确性
@@ -556,3 +568,15 @@ fi
 
 # ## 删除没有信息的日志文件
 # [[ $? -eq 0 ]] && [[ -s ${logf} ]] && rm ${logf}
+
+type=multi
+proj=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/identical/cor0.2
+breeds="A B"
+bfile=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/merge
+phef=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/identical/cor0.2/pheno_sim.txt
+thread=26
+code=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation
+seed=169852
+suffix=t
+tbv_col=6
+bin=lava

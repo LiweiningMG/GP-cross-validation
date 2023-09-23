@@ -20,9 +20,10 @@ spec <- matrix(
     "nqtl",     "p", 1, "integer",   "[Optional] Proportion of QTL to total SNPs [0.01]",
     "seed",     "s", 1, "integer",   "[Optional] seed of random effect sampling",
     "mean",     "e", 1, "character", "[Optional] population mean of poopulations [1.0]",
-    "overlap",  "v", 2, "character", "[Optional] allow QTLs and markers to overlap",
     "out",      "o", 1, "character", "[Optional] output phenotype file name",
     "qtlf",     "t", 1, "character", "[Optional] output QTL effects file name",
+    "overlap",  "v", 0, "logical",   "[Optional] allow QTLs and markers to overlap",
+    "evenly",   "E", 0, "logical",   "[Optional] Distribute QTLs evenly within the selected bins",
     "fid",      "f", 0, "logical",   "[Optional] whether output family id",
     "help",     "h", 0, "logical",   "This is Help!"
   ),
@@ -304,11 +305,37 @@ if (opt$nbin_cor > 0) {
 
   ## 为保证区间内相关，再挑选nsnp_cor-1个标记位点
   if (opt$nsnp_cor > 1) {
-    qmap2 <- subset(map, bin %in% bins_sel & !SNP %in% qmap$SNP) %>%
-      subset(!is.na(bin)) %>%
-      group_by(bin) %>%
-      slice_sample(n = opt$nsnp_cor - 1)
-    qmap <- bind_rows(qmap, qmap2)
+    if (is.null(opt$evenly)) {
+      qmap2 <- subset(map, bin %in% bins_sel & !SNP %in% qmap$SNP) %>%
+        subset(!is.na(bin)) %>%
+        group_by(bin) %>%
+        slice_sample(n = opt$nsnp_cor - 1)
+      qmap <- bind_rows(qmap, qmap2)
+    } else {
+      for (i in seq_along(bins_sel)) {
+        bini <- bins_sel[i]
+        snp_count <- length(map$bin[map$bin == bini])
+
+        # 计算均匀分布的间隔
+        interval <- floor(snp_count / (opt$nsnp_cor))
+
+        # 按间隔选择QTL
+        qtl_indices <- seq(from = 1, to = snp_count, by = interval)
+        qtl_indices <- qtl_indices[1:(opt$nsnp_cor)]
+        if (length(qtl_indices) != opt$nsnp_cor) break
+
+        # 根据选定的QTL索引从区间内选择QTL
+        qmap2 <- map %>%
+          filter(bin == bini) %>%
+          slice(qtl_indices)
+
+        ## 删除原来挑选的单个SNP
+        qmap <- subset(qmap, bin != bini)
+
+        # 将选定的QTL添加到结果数据框
+        qmap <- bind_rows(qmap, qmap2)
+      }
+    }
   }
 }
 
@@ -541,3 +568,27 @@ if (is.null(opt$overlap) && !is.null(opt$bin)) {
   write.table(bin$nsnp, newbinf, row.names = FALSE, quote = FALSE, col.names = FALSE)
   cat("new bins file output to:", newbinf, "\n")
 }
+
+## debug
+# setwd("/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep11/identical/cor0.2")
+opt <- list()
+opt$h2="0.5 0.3"
+opt$mean="1.0 0.5"
+opt$rg="0.2"
+opt$gt="/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep11/identical/cor0.2/Am /work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep11/identical/cor0.2/Bm"
+opt$bin="win"
+opt$win=60
+opt$nqtl=400
+opt$nbin_cor=10
+opt$nsnp_cor=10
+opt$dist_cor="identical"
+opt$seed=219074
+opt$fid=TRUE
+opt$min=30
+opt$overlap=TRUE
+opt$evenly=TRUE
+opt$binf="/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep11/cubic_overlap_50_psim.txt"
+opt$qtlf="qtl_info.txt"
+opt$out="pheno_sim.txt"
+
+
