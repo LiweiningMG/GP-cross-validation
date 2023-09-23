@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1/bin/Rscript
 ## phenotype simulation  ##
 ## liwn 2021-09-22 ##
 
@@ -300,6 +300,13 @@ if (opt$nbin_cor > 0) {
     quit()
   }
 
+  ## 检测区间数是否够抽样所需
+  if (length(bin_snps) < opt$nbin_cor) {
+    cat("The number of candidate intervals cannot meet the sampling requirements\n")
+    cat(length(bin_snps), "/", opt$nbin_cor, "\n")
+    quit()
+  }
+
   ## 抽取nbin_cor个区间，这些区间内的QTL在品种间存在关联
   bins_sel <- sample(qmap$bin[qmap$bin %in% bin_snps], opt$nbin_cor)
 
@@ -568,27 +575,3 @@ if (is.null(opt$overlap) && !is.null(opt$bin)) {
   write.table(bin$nsnp, newbinf, row.names = FALSE, quote = FALSE, col.names = FALSE)
   cat("new bins file output to:", newbinf, "\n")
 }
-
-## debug
-# setwd("/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep11/identical/cor0.2")
-opt <- list()
-opt$h2="0.5 0.3"
-opt$mean="1.0 0.5"
-opt$rg="0.2"
-opt$gt="/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep11/identical/cor0.2/Am /work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep11/identical/cor0.2/Bm"
-opt$bin="win"
-opt$win=60
-opt$nqtl=400
-opt$nbin_cor=10
-opt$nsnp_cor=10
-opt$dist_cor="identical"
-opt$seed=219074
-opt$fid=TRUE
-opt$min=30
-opt$overlap=TRUE
-opt$evenly=TRUE
-opt$binf="/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep11/cubic_overlap_50_psim.txt"
-opt$qtlf="qtl_info.txt"
-opt$out="pheno_sim.txt"
-
-

@@ -94,6 +94,7 @@ while true; do
     --rg_local )     rg_local=true;     shift   ;; ## 每个基因组分区的协方差不同，为局部ld、frq相关系数
     --all_comb )     all_comb=true;     shift   ;; ## breeds中所有可能的品种组合都进行评估
     --noCov )        noCov=true;        shift   ;; ## 性状间的残差效应约束为0
+    --overlap )      overlap=true;      shift   ;; ## SNP标记中包含QTL
     --suffix )       suffix=true;       shift   ;; ## 在union/blend/multi等文件夹后添加品种名称后缀，如blend_YY_LL
     --evenly )       evenly=true;       shift   ;; ## 在一个区间内挑选SNP作为存在遗传相关的QTL时，使SNP在区间中均匀分布
     --overlap )      overlap=true;      shift   ;; ## QTL保留在分析的SNP集中
