@@ -58,6 +58,18 @@ breeds=(VEC ADP AxM MIP VEF)
 traits_all=(100SdW DF DPM SdFe Yield)
 traits_cal=(100SdW DF Yield)
 
+######################## 数据集3 - 鸡 ########################
+
+## [Li X](https://doi.org/10.3389/fgene.2019.01287), Nie C, Liu Y, Chen Y, Lv X, Wang L, Zhang J, Yang W, Li K, Zheng C, Jia Y, Ning Z and Qu L (2020) The Genetic Architecture of Early Body Temperature and Its Correlation With *Salmonella Pullorum* Resistance in Three Chicken Breeds. *Front. Genet.* 10:1287. doi: 10.3389/fgene.2019.01287
+
+## 路径(需根据实际数据文件路径修改参数)
+pro=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/Real/Li2020
+bfile=${pro}/data/merge.qc
+phef=${pro}/data/phenotypes.txt
+breeds=(RIR DW BY)
+traits_all=(EBT Fever)
+traits_cal=(EBT Fever)
+
 
 ######################## 数据分析 ########################
 
@@ -103,9 +115,9 @@ for trait in "${traits_cal[@]}"; do
   sleep 10
 done
 
-## 品种的各种可能组合
-$combination --array "${breeds[*]}" --label VEC --max 3 --out ${pro}/breeds_combination.txt
-echo "VEC ADP AxM MIP VEF" >>${pro}/breeds_combination.txt
+## 品种的各种可能组合 --label VEC  --max 3
+$combination --array "${breeds[*]}" --out ${pro}/breeds_combination.txt
+# echo "VEC ADP AxM MIP VEF" >>${pro}/breeds_combination.txt
 
 ## 计算多品种GBLUP评估准确性
 for trait in "${traits_cal[@]}"; do
@@ -189,7 +201,7 @@ for trait in "${traits_cal[@]}"; do
 done
 
 ## 统计准确性和方差组分结果
-for type in accur var; do # type=var
+for type in accur var; do # type=accur
   $GP_cross \
     --type ${type} \
     --proj ${pro} \
@@ -213,30 +225,39 @@ pro=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two
 breed_sim="A B"
 means="1.0 0.5"
 h2s="0.5 0.3"
+last_females="500 100"
+bin_overlap=${code}/R/bin_overlap.R
 
 ## 品种数
 np=$(echo $breed_sim | tr " " "\n" | wc -l)
 
 ## 基因型数据模拟
-sbatch -c40 -p XiaoYueHe --mem=100G $GP_cross \
+sbatch -p XiaoYueHe -c20 --mem=100G $GP_cross \
   --type gsim \
   --code "${code}" \
   --proj "${pro}" \
   --breeds "${breed_sim}" \
   --nchr "18" \
-  --thread "40" \
-  --sim_dir "$(seq -s ' ' -f "rep%.0f" 1 10)" \
+  --thread "20" \
+  --sim_dir "$(seq -s ' ' -f "rep%.0f" 16 20)" \
   --founder_sel "rnd,rnd" \
   --seg_sel "phen /h,phen /l" \
-  --seg_gens "40 10" \
+  --seg_gens "20 10" \
   --last_sel "rnd,rnd" \
   --extentLDs "10 10" \
   --last_males "100 20" \
-  --last_females "500 100" \
+  --last_females "${last_females}" \
   --geno_gen "8-10" \
   --nmloc "200000"
 
-for r in {11..15}; do # r=11;dist=identical;cor=0.2;bin=cubic
+for r in {1..20}; do # r=10;dist=identical;cor=0.5;bin=lava
+  # ## 等待品种内验证群划分完毕
+  # while [[ ! -s ${pro}/rep${r}/B_data_001.txt ]]; do
+  #   while [[ $(wc -l 2>/dev/null <${pro}/rep${r}/B_data_001.txt) -lt 10121 ]]; do
+  #     sleep 10
+  #   done
+  # done
+
   ## 从模拟群体中筛选个体和SNP标记
   [[ ! -s ${pro}/rep${r}/merge.fam ]] && \
     $GP_cross \
@@ -244,7 +265,7 @@ for r in {11..15}; do # r=11;dist=identical;cor=0.2;bin=cubic
       --code ${code} \
       --proj "${pro}/rep${r}" \
       --breeds "${breed_sim}" \
-      --last_females "500 100" \
+      --last_females "${last_females}" \
       --nginds "3000 600" \
       --binDiv "pos" \
       --maf "0.01" \
@@ -256,31 +277,40 @@ for r in {11..15}; do # r=11;dist=identical;cor=0.2;bin=cubic
   ## 随机数种子
   seed=$(cat ${pro}/rep${r}/random.seed)
 
-  for dist in identical; do # dist=identical;cor=0.2;bin=cubic
-    for cor in 0.2 0.5; do
+  ## 生成区间文件
+  # for b in ${breed_sim}; do
+    b=M
+    # [[ ! -s ${pro}/rep${r}/cubic_${b}_50_psim.txt ]] && \
+    $GP_cross \
+      --type bin \
+      --proj ${proi} \
+      --bfile ${pro}/rep${r}/merge \
+      --bin "cubic" \
+      --nsnp_win "50" \
+      --nsnp_sim "100" \
+      --out "${pro}/rep${r}/cubic_${b}_50_psim.txt"
+  # done
+
+  # [[ ! -s ${pro}/rep${r}/cubic_overlap_50_psim.txt ]] && \
+  # $bin_overlap \
+  #   --bin1 ${pro}/rep${r}/cubic_A_50_psim.txt \
+  #   --bin2 ${pro}/rep${r}/cubic_B_50_psim.txt \
+  #   --out ${pro}/rep${r}/cubic_overlap_50_psim.txt
+
+  # ## 计算LD，用于确定表型模拟时QTL挑选
+  # [[ ! -s ${pro}/rep${r}/merge_50.ld ]] && \
+  #   plink \
+  #     --bfile ${pro}/rep${r}/merge \
+  #     --r2 \
+  #     --ld-window 26 \
+  #     --ld-window-kb 10000 \
+  #     --ld-window-r2 0 \
+  #     --out ${pro}/rep${r}/merge_50
+
+  for dist in uniform; do # dist=uniform;cor=0.8;bin=lava
+    for cor in 0.2; do
       proi=${pro}/rep${r}/${dist}/cor${cor}
       mkdir -m 777 -p ${proi}
-
-      ## 生成区间文件
-      [[ ! -s ${pro}/rep${r}/cubic_M_50_psim.txt ]] && \
-      $GP_cross \
-        --type bin \
-        --proj ${proi} \
-        --bfile ${pro}/rep${r}/merge \
-        --bin "cubic" \
-        --nsnp_win "50" \
-        --nsnp_sim "100" \
-        --out "${pro}/rep${r}/cubic_M_50_psim.txt"
-
-      # ## 计算LD，用于确定表型模拟时QTL挑选
-      # [[ ! -s ${pro}/rep${r}/merge_50.ld ]] && \
-      #   plink \
-      #     --bfile ${pro}/rep${r}/merge \
-      #     --r2 \
-      #     --ld-window 26 \
-      #     --ld-window-kb 10000 \
-      #     --ld-window-r2 0 \
-      #     --out ${pro}/rep${r}/merge_50
 
       ## 生成模拟表型
       # sbatch -c1 --mem=10G \
@@ -297,15 +327,16 @@ for r in {11..15}; do # r=11;dist=identical;cor=0.2;bin=cubic
         --nqtl "400" \
         --nsnp_cor "10" \
         --nbin_cor "10" \
-        --min "110" \
-        --binf ${pro}/rep${r}/cubic_M_50_psim.txt \
+        --evenly \
+        --min "30" \
+        --binf ${pro}/rep${r}/cubic_${b}_50_psim.txt \
         --seed ${seed}
       # sleep 10
 
       ## 计算品种内评估准确性GBLUP
       for b in ${breed_sim}; do
         [[ -s "${proi}/${b}/accur_GBLUP.txt" ]] && continue
-        sbatch -c25 -p XiaoYueHe --mem=100G \
+        sbatch -p XiaoYueHe -c25 --mem=100G \
           $GP_cross \
             --type within \
             --proj ${proi} \
@@ -326,27 +357,27 @@ for r in {11..15}; do # r=11;dist=identical;cor=0.2;bin=cubic
         sleep 3
       done
 
-      ## 多品种评估准确性(GBLUP)
-      for type in blend union; do
-        [[  -d ${proi}/${type}_${breed_sim// /_} ]] && continue
-        sbatch -c25 -p XiaoYueHe --mem=100G $GP_cross \
-          --type ${type} \
-          --proj ${proi} \
-          --breeds "${breed_sim}" \
-          --bfile ${pro}/rep${r}/merge \
-          --phef ${proi}/pheno_sim.txt \
-          --code ${code} \
-          --suffix \
-          --thread 26 \
-          --seed ${seed} \
-          --tbv_col 6
-        sleep 10
-      done
+      # ## 多品种评估准确性(GBLUP)
+      # for type in blend union; do
+      #   [[  -d ${proi}/${type}_${breed_sim// /_} ]] && continue
+      #   sbatch -c25 --mem=100G $GP_cross \
+      #     --type ${type} \
+      #     --proj ${proi} \
+      #     --breeds "${breed_sim}" \
+      #     --bfile ${pro}/rep${r}/merge \
+      #     --phef ${proi}/pheno_sim.txt \
+      #     --code ${code} \
+      #     --suffix \
+      #     --thread 26 \
+      #     --seed ${seed} \
+      #     --tbv_col 6
+      #   sleep 10
+      # done
 
       ## 计算多品种多性状Bayes评估准确性
       for bin in fix lava cubic; do
         [[ -s ${proi}/multi_${breed_sim// /_}/val1/rep1/EBV_${bin}_y1.txt ]] && continue
-        sbatch -c25 -p XiaoYueHe --mem=100G $GP_cross \
+        sbatch -p XiaoYueHe -c25 --mem=100G $GP_cross \
           --type multi \
           --proj ${proi} \
           --breeds "${breed_sim}" \
@@ -358,30 +389,35 @@ for r in {11..15}; do # r=11;dist=identical;cor=0.2;bin=cubic
           --suffix \
           --tbv_col 6 \
           --bin ${bin}
-        sleep 20
+        sleep 30
       done
 
-      ## 计算品种内评估准确性BayesAS
-      binf=${proi}/multi_${breed_sim// /_}/cubic_M_50.txt
-      [[ ! -f ${binf} ]] && continue
-      for b in ${breed_sim}; do
-        [[ -s "${proi}/${b}/accur_BayesAS.txt" ]] && continue
-        sbatch -c25 -p XiaoYueHe --mem=100G $GP_cross \
-          --type within \
-          --proj ${proi} \
-          --breeds "${b}" \
-          --bfile ${pro}/rep${r}/merge \
-          --phef ${proi}/pheno_sim.txt \
-          --code ${code} \
-          --binf ${binf} \
-          --method BayesAS \
-          --thread 26 \
-          --tbv_col 6 \
-          --seed ${seed} \
-          --rep 5 \
-          --fold 5
-        sleep 10
-      done
+      # ## 计算品种内评估准确性BayesAS
+      # binf=${proi}/multi_${breed_sim// /_}/cubic_M_50.txt
+
+      # ## 等待品种内验证群划分完毕
+      # while [[ ! -s ${binf} ]]; do
+      #   sleep 3
+      # done
+
+      # for b in ${breed_sim}; do
+      #   [[ -s "${proi}/${b}/accur_BayesAS.txt" ]] && continue
+      #   sbatch -c25 --mem=100G $GP_cross \
+      #     --type within \
+      #     --proj ${proi} \
+      #     --breeds "${b}" \
+      #     --bfile ${pro}/rep${r}/merge \
+      #     --phef ${proi}/pheno_sim.txt \
+      #     --code ${code} \
+      #     --binf ${binf} \
+      #     --method BayesAS \
+      #     --thread 26 \
+      #     --tbv_col 6 \
+      #     --seed ${seed} \
+      #     --rep 5 \
+      #     --fold 5
+      #   sleep 10
+      # done
     done
   done
 done
@@ -391,12 +427,13 @@ for type in accur var; do # type=accur $(seq -s " " 1 10)
   $GP_cross \
     --type ${type} \
     --proj ${pro} \
-    --rep "$(seq -s " " 1 10)" \
-    --rg_dist "identical" \
-    --rg_sim "0.2 0.5" \
+    --rep "$(seq -s " " 1 20)" \
+    --rg_dist "identical uniform" \
+    --rg_sim "0.2 0.5 0.8" \
     --bin "fix lava cubic" \
     --breeds "${breed_sim}" \
-    --code ${code}
+    --code ${code} \
+    --out accuracy_10QTL10bin30minEven_20230923.txt
 done
 
 
@@ -574,14 +611,198 @@ for type in accur var; do # type=accur
     --code ${code}
 done
 
+
+######################## 基于真实基因型模拟表型 ########################
+## 路径需根据实际需要修改
+pro=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/PheSim/Xie2021
+bfile=${pro}/data/Genotype.id.qc
+breed_sim="YY LL"
+means="1.0 0.5"
+h2s="0.5 0.4"
+bin_overlap=${code}/R/bin_overlap.R
+
+## 品种数
+np=$(echo $breed_sim | tr " " "\n" | wc -l)
+
+for r in {1..10}; do # r=1;dist=identical;cor=0.2;bin=fix
+  proi=${pro}/rep${r}
+  mkdir -p ${proi}
+
+  ## 随机数种子
+  if [[ ! -s "${proi}/random.seed" ]]; then
+    seed=$RANDOM
+    echo ${seed} >"${proi}/random.seed"
+  else
+    seed=$(cat "${proi}/random.seed")
+  fi
+
+  [[ ! -s ${pro}/rep${r}/cubic_M_50_psim.txt ]] && \
+  $GP_cross \
+    --type bin \
+    --proj ${proi} \
+    --bfile ${bfile} \
+    --bin "cubic" \
+    --nsnp_win "50" \
+    --nsnp_sim "100" \
+    --out "${pro}/rep${r}/cubic_M_50_psim.txt"
+
+  # [[ ! -s ${pro}/rep${r}/cubic_overlap_50_psim.txt ]] && \
+  # $bin_overlap \
+  #   --bin1 ${pro}/rep${r}/cubic_A_50_psim.txt \
+  #   --bin2 ${pro}/rep${r}/cubic_B_50_psim.txt \
+  #   --out ${pro}/rep${r}/cubic_overlap_50_psim.txt
+
+  for dist in identical; do # dist=identical;cor=0.5;bin=fix
+    for cor in 0.5; do
+      proi=${pro}/rep${r}/${dist}/cor${cor}
+      mkdir -m 777 -p ${proi}
+      # ## 计算LD，用于确定表型模拟时QTL挑选
+      # [[ ! -s ${pro}/rep${r}/merge_50.ld ]] && \
+      #   plink \
+      #     --bfile ${pro}/rep${r}/merge \
+      #     --r2 \
+      #     --ld-window 26 \
+      #     --ld-window-kb 10000 \
+      #     --ld-window-r2 0 \
+      #     --out ${pro}/rep${r}/merge_50
+
+      ## 生成模拟表型
+      # sbatch -c1 --mem=10G \
+      [[ ! -s ${pro}/rep${r}/cubic_M_50_psim.txt ]] && \
+      $GP_cross \
+        --type psim \
+        --proj ${proi} \
+        --bfile ${bfile} \
+        --breeds "${breed_sim}" \
+        --code ${code} \
+        --means "${means}" \
+        --h2s "${h2s}" \
+        --rg_sim "${cor}" \
+        --rg_dist ${dist} \
+        --nqtl "400" \
+        --nsnp_cor "10" \
+        --nbin_cor "10" \
+        --min "100" \
+        --binf ${pro}/rep${r}/cubic_M_50_psim.txt \
+        --seed ${seed}
+      # sleep 10
+
+      ## 计算品种内评估准确性GBLUP
+      for b in ${breed_sim}; do
+        [[ -s "${proi}/${b}/accur_GBLUP.txt" ]] && continue
+        sbatch -c25 -p XiaoYueHe --mem=100G \
+          $GP_cross \
+            --type within \
+            --proj "${proi}" \
+            --breeds "${b}" \
+            --bfile ${pro}/rep${r}/merge \
+            --phef ${proi}/pheno_sim.txt \
+            --code ${code} \
+            --thread 26 \
+            --tbv_col 6 \
+            --seed ${seed} \
+            --rep 5 \
+            --fold 5 \
+            --out accur_GBLUP.txt
+        sleep 5
+      done
+
+      ## 等待品种内验证群划分完毕
+      while [[ $(find ${proi}/*/val5/rep5/pheno.txt 2>/dev/null | wc -l) -lt ${np} ]]; do
+        sleep 3
+      done
+
+      # ## 多品种评估准确性(GBLUP)
+      # for type in blend union; do
+      #   [[  -d ${proi}/${type}_${breed_sim// /_} ]] && continue
+      #   sbatch -c25 -p XiaoYueHe --mem=100G $GP_cross \
+      #     --type ${type} \
+      #     --proj ${proi} \
+      #     --breeds "${breed_sim}" \
+      #     --bfile ${pro}/rep${r}/merge \
+      #     --phef ${proi}/pheno_sim.txt \
+      #     --code ${code} \
+      #     --suffix \
+      #     --thread 26 \
+      #     --seed ${seed} \
+      #     --tbv_col 6
+      #   sleep 10
+      # done
+
+      ## 计算多品种多性状Bayes评估准确性
+      for bin in fix lava cubic; do
+        [[ -s ${proi}/multi_${breed_sim// /_}/val1/rep1/EBV_${bin}_y1.txt ]] && continue
+        sbatch -c25 -p XiaoYueHe --mem=100G $GP_cross \
+          --type multi \
+          --proj ${proi} \
+          --breeds "${breed_sim}" \
+          --bfile ${pro}/rep${r}/merge \
+          --phef ${proi}/pheno_sim.txt \
+          --thread 26 \
+          --code ${code} \
+          --seed ${seed} \
+          --suffix \
+          --tbv_col 6 \
+          --bin ${bin}
+        sleep 20
+      done
+
+      # ## 计算品种内评估准确性BayesAS
+      # binf=${proi}/multi_${breed_sim// /_}/cubic_M_50.txt
+
+      # ## 等待品种内验证群划分完毕
+      # while [[ ! -s ${binf} ]]; do
+      #   sleep 3
+      # done
+
+      # [[ ! -f ${binf} ]] && continue
+      ## 提交品种内Bayes模型作业
+      # for b in ${breed_sim}; do
+      #   [[ -s "${proi}/${b}/accur_BayesAS.txt" ]] && continue
+      #   sbatch -c25 -p XiaoYueHe --mem=100G $GP_cross \
+      #     --type within \
+      #     --proj ${proi} \
+      #     --breeds "${b}" \
+      #     --bfile ${pro}/rep${r}/merge \
+      #     --phef ${proi}/pheno_sim.txt \
+      #     --code ${code} \
+      #     --binf ${binf} \
+      #     --method BayesAS \
+      #     --thread 26 \
+      #     --tbv_col 6 \
+      #     --seed ${seed} \
+      #     --rep 5 \
+      #     --fold 5 \
+      #     --out accur_BayesAS.txt
+      #   sleep 10
+      # done
+    done
+  done
+done
+
+## 统计准确性结果
+for type in accur var; do # type=accur $(seq -s " " 1 10)
+  $GP_cross \
+    --type ${type} \
+    --proj ${pro} \
+    --rep "$(seq -s " " 1 10)" \
+    --rg_dist "identical" \
+    --rg_sim "0.5" \
+    --bin "fix lava cubic" \
+    --breeds "${breed_sim}" \
+    --code ${code}
+done
+
+
+
 pro=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two
-for r in {1..10}; do
-  for c in 0.2 0.5; do
+for r in {1..20}; do
+  for c in 0.2; do
     for t in identical uniform; do
       path=${pro}/rep${r}/${t}/cor${c}
+      # [[ -d ${path} ]] && echo path=$path
       [[ -d ${path} ]] && rm -r ${path}
-      # path=${pro}/rep${r}/${t}/cor${c}
-      # [[ -d ${path} ]] && mv ${path} ${path}s
+      # [[ -d ${path} ]] && mv ${path} ${path}c
     done
   done
 done

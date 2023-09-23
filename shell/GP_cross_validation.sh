@@ -97,7 +97,6 @@ while true; do
     --overlap )      overlap=true;      shift   ;; ## SNP标记中包含QTL
     --suffix )       suffix=true;       shift   ;; ## 在union/blend/multi等文件夹后添加品种名称后缀，如blend_YY_LL
     --evenly )       evenly=true;       shift   ;; ## 在一个区间内挑选SNP作为存在遗传相关的QTL时，使SNP在区间中均匀分布
-    --overlap )      overlap=true;      shift   ;; ## QTL保留在分析的SNP集中
     --append )       append=true;       shift   ;; ## 计算校正表型时，把各个群体的校正表型进行合并
     --debug )        debug=true;        shift   ;; ## 不跑DMU、gmatrix、bayes等时间长的步骤
   -h | --help)    grep ";; ##" $0 | grep -v help && exit 1 ;;

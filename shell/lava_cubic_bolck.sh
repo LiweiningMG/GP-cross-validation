@@ -118,9 +118,15 @@ job_pool_init ${jobs} 0
 ## 随机种子，防止不同进程之间干扰
 seed=$RANDOM
 
-## 每条染色体进行区间划分
+## 染色体信息
 chrs=$(awk '{print $1}' ${bfile}.bim | sort -n | uniq)
 nchr=$(echo ${chrs} | tr " " "\n" | wc -l)
+
+## 报告
+echo "Panel for bin definition: $bfile"
+echo "Number of chromosomes in panel: $nchr"
+
+## 每条染色体进行区间划分
 for chr in ${chrs}; do
   ## 提取染色体信息
   plink --bfile ${bfile} --chr-set ${nchr} --chr ${chr} --make-bed --out ld_block_tmp.${seed}.${chr} >/dev/null
