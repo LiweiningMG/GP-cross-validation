@@ -120,7 +120,7 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
 
           ## 群体合并单性状
           accf=$(find ${path} -path "*/blen*/*" -name "accur_GBLUP*${b}*txt" 2>/dev/null)
-          if [[ ! ${accf} ]]; then
+          if [[ ${accf} ]]; then
             # accf=${path}/blend/accur_GBLUP_${b}.txt
             for f in ${accf}; do # f=${accf[0]}
               if [[ -s ${f} ]]; then
@@ -144,7 +144,7 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
           ## 群体合并多性状GBLUP
           accf=$(find ${path} -path "*/unio*/*" -name "accur_GBLUP*${b}*txt" 2>/dev/null)
           # accf=$(find ${path}/unio* -name "accur_*${b}*txt" 2>/dev/null)
-          if [[ ! ${accf} ]]; then
+          if [[ ${accf} ]]; then
             for f in ${accf}; do # f=${accf[0]}
               if [[ -s ${f} ]]; then
                 ## 文件夹名
@@ -198,4 +198,3 @@ sed -i '/rep/d' ${out}
 sed -i '/mean/d' ${out}
 ## 替换空格
 sed -i 's/ /\t/g' ${out}
-
